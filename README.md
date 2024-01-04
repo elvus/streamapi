@@ -51,7 +51,7 @@ That's it! Your StreamAPI server is now up and running. You can now utilize the 
 To convert a video, send a POST request to the appropriate endpoint with the video file. The API will handle the conversion process and provide you with the M3U8 file for streaming.
 
 ```bash
-curl -X POST -F "file=@your_video.mp4" http://localhost:5000/v1/stream/app/upload
+curl -X POST -F "file=@your_video.mp4" http://localhost:5000/convert
 ```
 
 Make sure to replace `your_video.mp4` with the actual file path of the video you want to convert.
@@ -65,6 +65,16 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 ## Contributing
 
 If you'd like to contribute to StreamAPI, please fork the repository and submit pull requests. Feel free to open issues for bug reports or feature requests.
+
+## Task List
+
+- [ ] **User Authentication**: Implement a login system and integrate JSON Web Tokens (JWT) for secure API access.
+
+- [ ] **Multiple Resolutions Support**: Enhance the API to handle multiple video resolutions, providing flexibility for different streaming scenarios.
+
+- [ ] **Customize Output Format**: Allow users to specify custom output formats for converted videos.
+
+- [ ] **Optimize FFMPEG Parameters**: Fine-tune FFMPEG parameters for better performance and efficiency.
 
 ## License
 
