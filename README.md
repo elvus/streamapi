@@ -1,4 +1,4 @@
-# StreamAPI: FFMPEG API for Video Conversion to M3U8
+# StreamAPI: FFMPEG API for Video Conversion
 
 StreamAPI is a simple yet powerful FFMPEG-based API that allows you to effortlessly convert your videos into the widely used M3U8 format. With easy setup and execution, this tool streamlines the process of adapting your videos for various streaming applications.
 
