@@ -14,7 +14,7 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
-@stream.route('/v1/stream/app/<path:filename>', methods=['GET'])
+@stream.route('/v1/stream/app/file/<path:filename>', methods=['GET'])
 def stream_video(filename):
     #ffmpeg -i input.mkv -c:v libx264 -c:a aac -f dash -hls_segment_type fmp4 output.m`pd
     hls_path = 'videos/' + filename  # Replace with the actual path to your MPD files

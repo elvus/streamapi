@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from models.objectid import PydanticObjectId
+
 class Episodes(BaseModel):
     episode_number: int
     title: str
@@ -13,7 +15,7 @@ class Seasons(BaseModel):
 
 
 class StreamContent(BaseModel):
-    id: Optional[str] = Field(None, alias='_id')
+    id: Optional[PydanticObjectId] = Field(None, alias='_id')
     title: str
     type: str
     release_year: int

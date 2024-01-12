@@ -1,10 +1,13 @@
+from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from models.objectid import PydanticObjectId
 
 class Address(BaseModel):
     street: str
     city: str
-    state: str
+    country: str
 
 class Profile(BaseModel):
     first_name: str
@@ -13,15 +16,15 @@ class Profile(BaseModel):
     address: Optional[Address] = None
 
 class User(BaseModel):
-    id: str
+    id: Optional[PydanticObjectId] = Field(None, alias='_id')
     username: str
     password: str
     email: str
     privileges: list
     role: Optional[str] = None
     profile: Optional[Profile] = None
-    created_at: str
-    updated_at: str
+    created_at: Optional[datetime] = Field(None, alias='createdAt')
+    updated_at: Optional[datetime] = Field(None, alias='updatedAt')
 
     def to_json(self):
         return self.model_dump()
