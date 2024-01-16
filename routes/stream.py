@@ -24,8 +24,8 @@ def stream_video(filename):
 
 @stream.route('/v1/stream/app/upload', methods=['POST'])
 @jwt_required()
-#convert video to hls = ffmpeg -i demo.flv -codec:a copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls demo.m3u8
 def upload_video():
+    #convert video to hls = ffmpeg -i demo.flv -codec:a copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls demo.m3u8
     try:
         file = request.files['file']
         if file and allowed_file(file.filename):
