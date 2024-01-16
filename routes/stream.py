@@ -1,5 +1,6 @@
 from flask import Blueprint, request, send_file, current_app
 from flask_cors import CORS
+from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import ffmpeg
@@ -15,12 +16,14 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 @stream.route('/v1/stream/app/file/<path:filename>', methods=['GET'])
+@jwt_required()
 def stream_video(filename):
     #ffmpeg -i input.mkv -c:v libx264 -c:a aac -f dash -hls_segment_type fmp4 output.m`pd
     hls_path = 'videos/' + filename  # Replace with the actual path to your MPD files
     return send_file(hls_path, mimetype='application/x-mpegURL')
 
 @stream.route('/v1/stream/app/upload', methods=['POST'])
+@jwt_required()
 #convert video to hls = ffmpeg -i demo.flv -codec:a copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls demo.m3u8
 def upload_video():
     try:
@@ -44,6 +47,7 @@ def upload_video():
         return {'status': 'failed'}
     
 @stream.route('/v1/stream/app/content', methods=['GET'])
+@jwt_required()
 def get_content():
     try:
         content = []
@@ -57,6 +61,7 @@ def get_content():
         return {'status': 'failed'}
     
 @stream.route('/v1/stream/app/content', methods=['POST'])
+@jwt_required()
 def new_content():
     try:
         conn = Connection()
