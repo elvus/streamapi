@@ -35,6 +35,7 @@ Rename the provided `.env.example` file to `.env`. This file contains configurat
 
 ```env
 UPLOAD_FOLDER=/path/to/your/upload/folder
+JWT_SECRET_KEY=my_secret_key
 ```
 
 Replace `/path/to/your/upload/folder` with the actual directory path where you want to store the converted videos.
