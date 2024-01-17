@@ -37,7 +37,6 @@ def create_user():
     try:
         raw_data = request.get_json()
         user = User(**raw_data)
-        user.created_at = datetime.now()
         insert_result = db.users.insert_one(user.to_bson())
         return {'status': 'success', 'id': str(insert_result.inserted_id)}
     except Exception as e:

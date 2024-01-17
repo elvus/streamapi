@@ -21,6 +21,6 @@ app.register_blueprint(stream)
 app.register_blueprint(users)
 app.register_blueprint(authentication)
 
-
+print(__name__)
 if __name__ == '__main__':
-    app.run()
+  app.run(debug=True, host='0.0.0.0', port=3001)

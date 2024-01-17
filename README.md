@@ -68,7 +68,7 @@ If you'd like to contribute to StreamAPI, please fork the repository and submit 
 
 ## Task List
 
-- [ ] **User Authentication**: Implement a login system and integrate JSON Web Tokens (JWT) for secure API access.
+- [x] **User Authentication**: Implement a login system and integrate JSON Web Tokens (JWT) for secure API access.
 
 - [ ] **Multiple Resolutions Support**: Enhance the API to handle multiple video resolutions, providing flexibility for different streaming scenarios.
 
