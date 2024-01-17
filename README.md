@@ -41,7 +41,7 @@ Replace `/path/to/your/upload/folder` with the actual directory path where you w
 ### 6. Run the Flask Application
 
 ```bash
-flask run
+python app.py
 ```
 
 That's it! Your StreamAPI server is now up and running. You can now utilize the API to convert your videos to the M3U8 format seamlessly.
@@ -51,7 +51,7 @@ That's it! Your StreamAPI server is now up and running. You can now utilize the 
 To convert a video, send a POST request to the appropriate endpoint with the video file. The API will handle the conversion process and provide you with the M3U8 file for streaming.
 
 ```bash
-curl -X POST -F "file=@your_video.mp4" http://localhost:5000/convert
+curl -X POST -F "file=@your_video.mp4" http://localhost:3001/v1/stream/app/upload
 ```
 
 Make sure to replace `your_video.mp4` with the actual file path of the video you want to convert.
