@@ -28,9 +28,10 @@ pip install -r requirements.txt
 
 Rename the provided `.env.example` file to `.env`. This file contains configuration settings for your StreamAPI.
 
-### 5. Set the `UPLOAD_FOLDER` Variable
+### 5. Set the `UPLOAD_FOLDER` and `JWT_SECRET_KEY` Variable
 
-Open the newly renamed `.env` file and set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
+1. Open the newly renamed `.env` file and set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
+2. Set your `JWT_SECRET_KEY` sentence
 
 ```env
 UPLOAD_FOLDER=/path/to/your/upload/folder
