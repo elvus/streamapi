@@ -2,6 +2,14 @@
 
 StreamAPI is a simple yet powerful FFMPEG-based API that allows you to effortlessly convert your videos into the widely used M3U8 format. With easy setup and execution, this tool streamlines the process of adapting your videos for various streaming applications.
 
+## Requirements
+
+To run StreamAPI, you need the following software installed on your system:
+
+- Python 3.6+
+- FFMPEG
+- MongoDB
+
 ## Getting Started
 
 Follow these simple steps to get started with StreamAPI:
@@ -28,14 +36,18 @@ pip install -r requirements.txt
 
 Rename the provided `.env.example` file to `.env`. This file contains configuration settings for your StreamAPI.
 
-### 5. Set the `UPLOAD_FOLDER` and `JWT_SECRET_KEY` Variable
+### 5. Configure the `.env` File
 
-1. Open the newly renamed `.env` file and set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
+1. Set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
 2. Set your `JWT_SECRET_KEY` sentence
+3. Set your MongoDB connection variables
 
 ```env
 UPLOAD_FOLDER=/path/to/your/upload/folder
 JWT_SECRET_KEY=my_secret_key
+MONGO_HOST='localhost'
+MONGO_PORT=27017
+MONGO_DB='video-api'
 ```
 
 Replace `/path/to/your/upload/folder` with the actual directory path where you want to store the converted videos.
