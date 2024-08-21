@@ -14,10 +14,10 @@ db = conn.get_db()
 def get_users():
     try:
         cursor = db.users.find()
-        return {'status': 'success', 'users': [User(**doc).to_json() for doc in cursor]}
+        return {'status': 'success', 'users': [User(**doc).to_json() for doc in cursor]}, 200
     except Exception as e:
         print(e)
-        return {'status': 'failed'}
+        return {'status': 'failed'}, 500
     
 @users.route('/v1/stream/app/users/<path:user_id>', methods=['GET'])
 @jwt_required()
@@ -26,10 +26,10 @@ def get_user(user_id):
         object_id = ObjectId(user_id)
         cursor = db.users.find_one({'_id': object_id})
         user = User(**cursor).to_json()
-        return {'status': 'success', 'user': user}
+        return {'status': 'success', 'user': user}, 200
     except Exception as e:
         print(e)
-        return {'status': 'failed'}
+        return {'status': 'failed'}, 500
 
 @users.route('/v1/stream/app/users', methods=['POST'])
 @jwt_required()
@@ -38,10 +38,10 @@ def create_user():
         raw_data = request.get_json()
         user = User(**raw_data)
         insert_result = db.users.insert_one(user.to_bson())
-        return {'status': 'success', 'id': str(insert_result.inserted_id)}
+        return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201
     except Exception as e:
         print(e)
-        return {'status': 'failed'}
+        return {'status': 'failed'}, 500
     
 @users.route('/v1/stream/app/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
@@ -51,7 +51,7 @@ def update_user(user_id):
         user = User(**raw_data)
         user.updated_at = datetime.now()
         update_result = db.users.update_one({'_id': user_id}, {'$set': user.to_bson()})
-        return {'status': 'success', 'id': str(update_result.upserted_id)}
+        return {'status': 'success', 'id': str(update_result.upserted_id)}, 200
     except Exception as e:
         print(e)
         return {'status': 'failed'}
@@ -61,7 +61,7 @@ def update_user(user_id):
 def delete_user(user_id):
     try:
         delete_result = db.users.delete_one({'_id': user_id})
-        return {'status': 'success', 'id': str(delete_result.deleted_count)}
+        return {'status': 'success', 'id': str(delete_result.deleted_count)}, 200
     except Exception as e:
         print(e)
-        return {'status': 'failed'}
+        return {'status': 'failed'}, 500
