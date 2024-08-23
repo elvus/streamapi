@@ -54,7 +54,7 @@ def update_user(user_id):
         return {'status': 'success', 'id': str(update_result.upserted_id)}, 200
     except Exception as e:
         print(e)
-        return {'status': 'failed'}
+        return {'status': 'failed'}, 500
 
 @users.route('/v1/stream/app/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
