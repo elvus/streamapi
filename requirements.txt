@@ -16,6 +16,5 @@ pyee==11.1.0
 PyJWT==2.8.0
 pymongo==4.6.1
 python-dotenv==1.0.0
-python-ffmpeg==2.0.9
 typing_extensions==4.9.0
 Werkzeug==3.0.1

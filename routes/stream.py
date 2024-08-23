@@ -1,11 +1,10 @@
-import ffmpeg.ffmpeg
 from flask import Blueprint, request, send_file, current_app
 from flask_cors import CORS
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from pathlib import Path
-import ffmpeg
+from ffmpeg import _ffmpeg as ffmpeg
 import os
 
 from models.content_model import StreamContent
@@ -46,8 +45,7 @@ def upload_video():
             os.remove(video_path)
         return {'status': 'success'}, 200
     except Exception as e:
-        print(e)
-        return {'status': 'failed'}, 500
+        return {'status': 'failed', 'message': str(e)}, 500
     
 @stream.route('/v1/stream/app/content', methods=['GET'])
 @jwt_required()
