@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamapi
+  labels:
+    app: streamapi
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: streamapi
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: streamapi
+        version: v1
+    spec:
+      containers:
+        - name: streamapi
+          image: elvus/streamapi:latest
+          ports:
+          - containerPort: 5000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+          env:
+            - name: UPLOAD_FOLDER
+              value: /app/videos
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: streamapi-secret
+                  key: JWT_SECRET_KEY
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: streamapi-secret
+                  key: MONGO_CONNECTION_STRING
+          volumeMounts:
+            - name: videos
+              mountPath: /app/videos
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+      volumes:
+        - name: videos
+          persistentVolumeClaim:
+            claimName: videos-pvc
