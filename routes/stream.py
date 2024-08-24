@@ -1,8 +1,6 @@
 from flask import Blueprint, request, send_file, current_app
-from flask_cors import CORS
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
 from pathlib import Path
 from ffmpeg import _ffmpeg as ffmpeg
 import os
@@ -58,8 +56,7 @@ def get_content():
                     content.append(os.path.join(root[len(current_app.config['UPLOAD_FOLDER']):], file))
         return {'status': 'success', 'catalog': { 'title': 'Random Videos', 'content': content }}, 200
     except Exception as e:
-        print(e)
-        return {'status': 'failed'}, 500
+        return {'status': 'failed', 'message': str(e)}, 500
     
 @stream.route('/v1/stream/app/content', methods=['POST'])
 @jwt_required()
@@ -72,5 +69,4 @@ def new_content():
         insert_result = db['catalog'].insert_one(content.to_bson())
         return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201
     except Exception as e:
-        print(e)
-        return {'status': 'failed'}, 500
+        return {'status': 'failed', 'message': str(e)}, 500

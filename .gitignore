@@ -1,6 +1,33 @@
-__pycache__
-.DS_Store
-.env
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
 venv/
 env/
+.env
+
+# IDEs and editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Miscellaneous
+*.pyc
+.DS_Store
+
+#Custom
 videos/
+config/
