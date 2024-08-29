@@ -20,6 +20,7 @@ spec:
       containers:
         - name: streamapi
           image: elvus/streamapi:latest
+          imagePullPolicy: Always
           ports:
           - containerPort: 5000
           livenessProbe:
