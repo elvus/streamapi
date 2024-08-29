@@ -53,8 +53,13 @@ def get_content():
         for root, dirs, files in os.walk(current_app.config['UPLOAD_FOLDER']):
             for file in files:
                 if file.endswith('.m3u8'):
-                    content.append(os.path.join(root[len(current_app.config['UPLOAD_FOLDER']):], file))
-        return {'status': 'success', 'catalog': { 'title': 'Random Videos', 'content': content }}, 200
+                    content.append({
+                        'id': Path(file).stem,
+                        'title': Path(file).stem,
+                        'url': f'{request.url_root}v1/stream/app/file/{file}',
+                        'category': 'Ramdom Videos'
+                    })
+        return {'catalog': content}, 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
