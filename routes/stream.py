@@ -3,12 +3,16 @@ from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from ffmpeg import _ffmpeg as ffmpeg
+from ffmpeg import _probe as ffprobe
+from connection.connection import Connection
 import os
 
-from models.content_model import StreamContent
+from models.catalog_model import StreamContent
 from connection.connection import Connection
 
 stream = Blueprint('stream', __name__)
+conn = Connection()
+db = conn.get_db()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -40,6 +44,7 @@ def upload_video():
             
             video_output_path = os.path.join(upload_path, filename + '.m3u8')
             ffmpeg.input(video_path).output(video_output_path, format='hls', acodec='copy', start_number=0, hls_time=10, hls_list_size=0).run()
+
             os.remove(video_path)
         return {'status': 'success'}, 200
     except Exception as e:
@@ -56,8 +61,8 @@ def get_content():
                     content.append({
                         'id': Path(file).stem,
                         'title': Path(file).stem,
-                        'url': f'{request.url_root}v1/stream/app/file/{file}',
-                        'category': 'Ramdom Videos'
+                        'duration_seconds': ffprobe.probe(os.path.join(root, file))['format']['duration'],
+                        'path': os.path.join(root, file)
                     })
         return {'catalog': content}, 200
     except Exception as e:
@@ -65,13 +70,13 @@ def get_content():
     
 @stream.route('/v1/stream/app/content', methods=['POST'])
 @jwt_required()
-def new_content():
+def create_content():
     try:
         conn = Connection()
         db = conn.get_db()
         raw_data = request.get_json()
         content = StreamContent(**raw_data)
-        insert_result = db['catalog'].insert_one(content.to_bson())
+        insert_result = db.catalog.insert_one(content.to_bson())
         return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
