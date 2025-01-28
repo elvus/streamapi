@@ -15,16 +15,24 @@ def login():
         raw_data = request.get_json()
         username = raw_data.get('username')
         password = raw_data.get('password')
-        cursor = db.users.find_one({'username': username, 'password': password})
         
-        if cursor is None:
+        if not username or not password:
+            return {'status': 'failed', 'msg': 'Username and password are required'}, 400
+        
+        cursor = db.users.find_one({'username': username})
+        if cursor is None or not User.verify_password(User(**cursor), password):
             return {'status': 'failed', 'msg': 'Username or password is incorrect'}, 401
         
         user = User(**cursor)
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
-        return {'status': 'success', 'user': user.to_json(), 'access_token': access_token, 'refresh_token': refresh_token}, 200
+        response = jsonify({'status': 'success', 'user': user.to_json()})
+        response.set_cookie('access_token_cookie', access_token, httponly=True, samesite='Lax')  # SameSite can be Strict if no cross-origin
+        response.set_cookie('refresh_token_cookie', refresh_token, httponly=True, samesite='Lax')
+        return response, 200
+    
     except Exception as e:
+        print(e)
         return {"status": "failed", "msg": "Internal server error"}, 500
 
 @authentication.route('/v1/stream/app/refresh', methods=['POST'])

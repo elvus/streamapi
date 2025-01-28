@@ -17,6 +17,8 @@ CORS(app)
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER')
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'webm'}
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config['JWT_COOKIE_SECURE'] = False  # Development only
+app.config['JWT_COOKIE_HTTPONLY'] = True
 
 app.register_blueprint(stream)
 app.register_blueprint(users)
