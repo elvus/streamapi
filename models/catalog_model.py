@@ -21,8 +21,8 @@ class StreamContent(BaseModel):
     release_year: int
     genre: List[str]
     rating: float
-    description: str
-    cast: List[str]
+    description: Optional[str] = None
+    cast: Optional[List[str]] = None
     seasons: Optional[List[Seasons]] = None
     duration_seconds: Optional[int] = None
     file_path: Optional[str] = None

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, send_file, current_app
+from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
 from pathlib import Path
@@ -46,7 +46,7 @@ def upload_video():
             ffmpeg.input(video_path).output(video_output_path, format='hls', acodec='copy', start_number=0, hls_time=10, hls_list_size=0).run()
 
             os.remove(video_path)
-        return {'status': 'success'}, 200
+        return jsonify({'status': 'success', 'file_path': video_output_path}), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
@@ -59,12 +59,13 @@ def get_content():
             for file in files:
                 if file.endswith('.m3u8'):
                     content.append({
+                        'key': Path(file).stem,
                         'id': Path(file).stem,
                         'title': Path(file).stem,
                         'duration_seconds': ffprobe.probe(os.path.join(root, file))['format']['duration'],
                         'path': os.path.join(root, file)
                     })
-        return {'catalog': content}, 200
+        return jsonify(content), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     

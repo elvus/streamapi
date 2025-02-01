@@ -27,8 +27,8 @@ def login():
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
         response = jsonify({'status': 'success', 'user': user.to_json()})
-        response.set_cookie('access_token_cookie', access_token, httponly=True, samesite='Lax')  # SameSite can be Strict if no cross-origin
-        response.set_cookie('refresh_token_cookie', refresh_token, httponly=True, samesite='Lax')
+        response.set_cookie('access_token_cookie', access_token, httponly=True, secure=False, samesite='Lax')
+        response.set_cookie('refresh_token_cookie', refresh_token, httponly=True, secure=False, samesite='Lax')
         return response, 200
     
     except Exception as e:
