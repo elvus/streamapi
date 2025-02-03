@@ -2,6 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from models.objectid import PydanticObjectId
+from datetime import datetime, timezone
 
 class Episodes(BaseModel):
     episode_number: int
@@ -26,8 +27,8 @@ class StreamContent(BaseModel):
     seasons: Optional[List[Seasons]] = None
     duration_seconds: Optional[int] = None
     file_path: Optional[str] = None
-    created_at: Optional[str] = Field(None, alias='createdAt')
-    updated_at: Optional[str] = Field(None, alias='updatedAt')
+    created_at: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='createdAt')
+    updated_at: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='updatedAt')
 
     def to_json(self):
         return self.model_dump()
