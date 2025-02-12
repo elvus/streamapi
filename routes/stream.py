@@ -19,12 +19,12 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
-@stream.route('/v1/stream/app/file/<path:filename>', methods=['GET'])
+@stream.route('/v1/api/videos/stream/<path:filename>', methods=['GET'])
 def stream_video(filename):
     #ffmpeg -i input.mkv -c:v libx264 -c:a aac -f dash -hls_segment_type fmp4 output.m`pd
     return send_file(filename, mimetype='application/x-mpegURL')
     
-@stream.route('/v1/stream/app/content', methods=['GET'])
+@stream.route('/v1/api/videos', methods=['GET'])
 def list_content():
     try:
         conn = Connection()
@@ -48,7 +48,7 @@ def list_content():
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
 
-@stream.route('/v1/stream/app/content/<string:content_id>/details', methods=['GET'])
+@stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
     try:
         print(content_id)
@@ -59,7 +59,7 @@ def get_content(content_id):
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
-@stream.route('/v1/stream/app/upload', methods=['POST'])
+@stream.route('/v1/api/videos/upload', methods=['POST'])
 @jwt_required()
 def upload_video():
     #convert video to hls = ffmpeg -i demo.flv -codec:a copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls demo.m3u8
@@ -84,7 +84,7 @@ def upload_video():
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
-@stream.route('/v1/stream/app/content', methods=['POST'])
+@stream.route('/v1/api/videos', methods=['POST'])
 @jwt_required()
 def create_content():
     try:
