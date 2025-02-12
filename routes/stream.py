@@ -5,6 +5,7 @@ from pathlib import Path
 from ffmpeg import _ffmpeg as ffmpeg
 from ffmpeg import _probe as ffprobe
 from connection.connection import Connection
+from flask_cors import cross_origin
 import os
 
 from models.catalog_model import StreamContent
@@ -19,12 +20,45 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 @stream.route('/v1/stream/app/file/<path:filename>', methods=['GET'])
-@jwt_required()
 def stream_video(filename):
     #ffmpeg -i input.mkv -c:v libx264 -c:a aac -f dash -hls_segment_type fmp4 output.m`pd
-    hls_path = 'videos/' + filename  # Replace with the actual path to your MPD files
-    return send_file(hls_path, mimetype='application/x-mpegURL')
+    return send_file(filename, mimetype='application/x-mpegURL')
+    
+@stream.route('/v1/stream/app/content', methods=['GET'])
+def list_content():
+    try:
+        conn = Connection()
+        db = conn.get_db()
+        cursor = db.catalog.find()
+        content = [StreamContent(**item).to_json() for item in cursor]
+        return jsonify(content), 200
 
+        # content = []
+        # for root, dirs, files in os.walk(current_app.config['UPLOAD_FOLDER']):
+        #     for file in files:
+        #         if file.endswith('.m3u8'):
+        #             content.append({
+        #                 'key': Path(file).stem,
+        #                 'id': Path(file).stem,
+        #                 'title': Path(file).stem,
+        #                 'duration_seconds': ffprobe.probe(os.path.join(root, file))['format']['duration'],
+        #                 'path': os.path.join(root, file)
+        #             })
+        # return jsonify(content), 200
+    except Exception as e:
+        return {'status': 'failed', 'message': str(e)}, 500
+
+@stream.route('/v1/stream/app/content/<string:content_id>/details', methods=['GET'])
+def get_content(content_id):
+    try:
+        print(content_id)
+        conn = Connection()
+        db = conn.get_db()
+        cursor = db.catalog.find_one({'uuid': content_id})
+        return jsonify(StreamContent(**cursor).to_json()), 200
+    except Exception as e:
+        return {'status': 'failed', 'message': str(e)}, 500
+    
 @stream.route('/v1/stream/app/upload', methods=['POST'])
 @jwt_required()
 def upload_video():
@@ -47,25 +81,6 @@ def upload_video():
 
             os.remove(video_path)
         return jsonify({'status': 'success', 'file_path': video_output_path}), 200
-    except Exception as e:
-        return {'status': 'failed', 'message': str(e)}, 500
-    
-@stream.route('/v1/stream/app/content', methods=['GET'])
-@jwt_required()
-def get_content():
-    try:
-        content = []
-        for root, dirs, files in os.walk(current_app.config['UPLOAD_FOLDER']):
-            for file in files:
-                if file.endswith('.m3u8'):
-                    content.append({
-                        'key': Path(file).stem,
-                        'id': Path(file).stem,
-                        'title': Path(file).stem,
-                        'duration_seconds': ffprobe.probe(os.path.join(root, file))['format']['duration'],
-                        'path': os.path.join(root, file)
-                    })
-        return jsonify(content), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     

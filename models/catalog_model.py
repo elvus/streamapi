@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
-
+from uuid import uuid4
 from models.objectid import PydanticObjectId
 from datetime import datetime, timezone
 
@@ -17,6 +17,7 @@ class Seasons(BaseModel):
 
 class StreamContent(BaseModel):
     id: Optional[PydanticObjectId] = Field(None, alias='_id')
+    uuid: Optional[str] = Field(default_factory=lambda: str(uuid4()), alias='uuid')
     title: str
     type: str
     release_year: int
@@ -27,8 +28,8 @@ class StreamContent(BaseModel):
     seasons: Optional[List[Seasons]] = None
     duration_seconds: Optional[int] = None
     file_path: Optional[str] = None
-    created_at: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='createdAt')
-    updated_at: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='updatedAt')
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='createdAt')
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='updatedAt')
 
     def to_json(self):
         return self.model_dump()

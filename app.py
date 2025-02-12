@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from routes.stream import stream
@@ -26,6 +26,12 @@ app.register_blueprint(stream)
 app.register_blueprint(users)
 app.register_blueprint(authentication)
 app.register_blueprint(healthz)
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT') or 5000)
