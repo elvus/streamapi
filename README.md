@@ -40,14 +40,14 @@ Rename the provided `.env.example` file to `.env`. This file contains configurat
 
 1. Set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
 2. Set your `JWT_SECRET_KEY` sentence
-3. Set your MongoDB connection variables
+3. Set your `MONGO_URI` connection variables
+4. Set the `CORS_ORIGIN` variable to the URL of your frontend application.
 
 ```env
 UPLOAD_FOLDER=/path/to/your/upload/folder
 JWT_SECRET_KEY=my_secret_key
-MONGO_HOST='localhost'
-MONGO_PORT=27017
-MONGO_DB='video-api'
+MONGO_URI=mongodb://localhost:27017/streamapi
+CORS_ORIGIN=http://localhost:3000
 ```
 
 Replace `/path/to/your/upload/folder` with the actual directory path where you want to store the converted videos.
@@ -55,7 +55,8 @@ Replace `/path/to/your/upload/folder` with the actual directory path where you w
 ### 6. Run the Flask Application
 
 ```bash
-python app.py
+export FLASK_APP=app.py
+flask run
 ```
 
 That's it! Your StreamAPI server is now up and running. You can now utilize the API to convert your videos to the M3U8 format seamlessly.
@@ -65,10 +66,95 @@ That's it! Your StreamAPI server is now up and running. You can now utilize the 
 To convert a video, send a POST request to the appropriate endpoint with the video file. The API will handle the conversion process and provide you with the M3U8 file for streaming.
 
 ```bash
-curl -X POST -F "file=@your_video.mp4" http://localhost:3001/v1/stream/app/upload
+curl -X POST -F "file=@your_video.mp4" http://localhost:3001/v1/api/videos/upload
 ```
-
 Make sure to replace `your_video.mp4` with the actual file path of the video you want to convert.
+
+## API Endpoints
+
+### 1. Upload Video
+
+**Endpoint:** `POST /api/videos/upload`
+
+- **Description:** Uploads a video file.
+- **Request:**
+  - Headers: `Content-Type: multipart/form-data`
+  - Body:
+    - `file`: Video file
+- **Response:**
+  ```json
+  {
+    "status": "success",
+    "file_path": "/path/to/your/upload/folder/video.m3u8"
+  }
+  ```
+
+### 2. Stream Video
+
+**Endpoint:** `GET /v1/api/videosstream/:id`
+
+- **Description:** Streams a video by ID.
+- **Request:**
+  - Params:
+    - `id`: Video ID
+- **Response:** Video stream
+
+### 3. Get Video Metadata
+
+**Endpoint:** `GET /v1/api/videos:id/details`
+
+- **Description:** Retrieves metadata for a stored video.
+- **Request:**
+  - Params:
+    - `id`: Video ID
+- **Response:**
+  ```json
+  {
+    "cast": null,
+    "created_at": "Wed, 12 Feb 2025 00:39:42 GMT",
+    "description": null,
+    "duration_seconds": null,
+    "file_path": "/path/to/your/upload/folder/video.m3u8",
+    "genre": [
+      "Animation"
+    ],
+    "id": "67abedce3f77fbead839c165",
+    "rating": 0,
+    "release_year": 2025,
+    "seasons": null,
+    "title": "My Video",
+    "type": "movie",
+    "updated_at": "Wed, 12 Feb 2025 00:39:42 GMT",
+    "uuid": "c8528052-b99e-425b-ad8a-53e9221ddd5e"
+  }
+  ```
+### 4. Get All Videos
+- **Endpoint:** `GET /v1/api/videos`
+- **Description:** Retrieves all stored videos.
+- **Request:** None
+- **Response:**
+    ```json
+    [
+        {
+            "cast": null,
+            "created_at": "Wed, 12 Feb 2025 00:39:42 GMT",
+            "description": null,
+            "duration_seconds": null,
+            "file_path": "/path/to/your/upload/folder/video.m3u8",
+            "genre": [
+                "Animation"
+            ],
+            "id": "67abedce3f77fbead839c165",
+            "rating": 0,
+            "release_year": 2025,
+            "seasons": null,
+            "title": "My Video",
+            "type": "movie",
+            "updated_at": "Wed, 12 Feb 2025 00:39:42 GMT",
+            "uuid": "c8528052-b99e-425b-ad8a-53e9221ddd5e"
+        }
+    ]
+    ```
 
 ## Features
 
@@ -78,7 +164,7 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 
 ## Contributing
 
-If you'd like to contribute to StreamAPI, please fork the repository and submit pull requests. Feel free to open issues for bug reports or feature requests.
+Feel free to open an issue or submit a pull request to improve StreamAPI!
 
 ## Task List
 
@@ -93,7 +179,3 @@ If you'd like to contribute to StreamAPI, please fork the repository and submit 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-StreamAPI - Your go-to solution for effortless video conversion to M3U8!
