@@ -6,13 +6,30 @@ StreamAPI is a simple yet powerful FFMPEG-based API that allows you to effortles
 
 To run StreamAPI, you need the following software installed on your system:
 
+- Docker
 - Python 3.6+
 - FFMPEG
 - MongoDB
 
-## Getting Started
+## Installation
 
-Follow these simple steps to get started with StreamAPI:
+### Using Docker (Recommended)
+
+```sh
+# Clone the repository
+git clone https://github.com/elvus/streamapi.git
+cd streamapi
+
+# Start the services
+docker-compose up -d
+```
+### Manual Setup
+
+```sh
+# Clone the repository
+git clone https://github.com/elvus/streamapi.git
+cd streamapi
+```
 
 ### 1. Create a Virtual Environment
 
@@ -71,7 +88,62 @@ curl -X POST -F "file=@your_video.mp4" http://localhost:3001/v1/api/videos/uploa
 Make sure to replace `your_video.mp4` with the actual file path of the video you want to convert.
 
 ## API Endpoints
+### Authentication Endpoints
+### 1. Register User
+***Endpoint:*** `POST /v1/api/stream/login`
+- **Description:** Registers a new user.
+- **Request:**
+  - Headers: `Content-Type: application/json`
+  - Body:
+    ```json
+    {
+      "username": "user",
+      "password": "password"
+    }
+    ```
+- **Response:**
+  ```json
+  {
+    "status": "success",
+    "msg": "User created successfully"
+  }
+  ```
+### 2. Login User 
+***Endpoint:*** `POST /v1/api/stream/login`
+- **Description:** Logs in a user.
+- **Request:**
+  - Headers: `Content-Type: application/json`
+  - Body:
+    ```json
+    {
+      "status": "success",
+      "user": {
+        "created_at": "Thu, 13 Feb 2025 00:10:01 GMT",
+        "email": "user@mail.com",
+        "id": "67ad38720cfcd6ffd43f131c",
+        "password": "*********",
+        "privileges": [
+          "read",
+          "write",
+          "update"
+        ],
+        "profile": null,
+        "role": null,
+        "updated_at": null,
+        "username": "user"
+      }
+    }
 
+    ```
+- **Response:**
+  ```json
+  {
+    "status": "success",
+    "msg": "Logged in successfully",
+  }
+  ```
+
+### Video Endpoints
 ### 1. Upload Video
 
 **Endpoint:** `POST /api/videos/upload`
