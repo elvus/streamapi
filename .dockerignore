@@ -4,5 +4,6 @@ __pycache__
 venv/
 env/
 videos/
+charts/
 *.example
 README.md
