@@ -1,0 +1,23 @@
+services:
+    flask:
+        build: .
+        ports:
+        - "5000:5000"
+        volumes:
+        - .:/code
+        depends_on:
+        - streamdb
+        environment:
+        - MONGO_URI=mongodb://streamdb:27017/test
+        - UPLOAD_FOLDER=/code/uploads
+        - JWT_SECRET_KEY=secret
+        - CORS_ORIGINS=http://localhost:3000
+    streamdb:
+        image: mongo:latest
+        volumes:
+        - mongo-data:/data/db
+        ports:
+        - "27017:27017"
+volumes:
+    mongo-data:
+    code:
