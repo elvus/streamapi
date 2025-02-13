@@ -9,7 +9,7 @@ users = Blueprint('users', __name__)
 conn = Connection()
 db = conn.get_db()
 
-@users.route('/v1/stream/app/users', methods=['GET'])
+@users.route('/v1/api/stream/users', methods=['GET'])
 @jwt_required()
 def get_users():
     try:
@@ -19,7 +19,7 @@ def get_users():
         print(e)
         return {'status': 'failed'}, 500
     
-@users.route('/v1/stream/app/users/<path:user_id>', methods=['GET'])
+@users.route('/v1/api/stream/users/<path:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
     try:
@@ -31,7 +31,7 @@ def get_user(user_id):
         print(e)
         return {'status': 'failed'}, 500
 
-@users.route('/v1/stream/app/users', methods=['POST'])
+@users.route('/v1/api/stream/users', methods=['POST'])
 @jwt_required()
 def create_user():
     try:
@@ -43,7 +43,7 @@ def create_user():
         print(e)
         return {'status': 'failed'}, 500
     
-@users.route('/v1/stream/app/users/<int:user_id>', methods=['PUT'])
+@users.route('/v1/api/stream/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def update_user(user_id):
     try:
@@ -56,7 +56,7 @@ def update_user(user_id):
         print(e)
         return {'status': 'failed'}, 500
 
-@users.route('/v1/stream/app/users/<int:user_id>', methods=['DELETE'])
+@users.route('/v1/api/stream/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
     try:

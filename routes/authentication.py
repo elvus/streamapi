@@ -9,7 +9,7 @@ authentication = Blueprint('authentication', __name__)
 conn = Connection()
 db = conn.get_db()
 
-@authentication.route('/v1/stream/app/login', methods=['POST'])
+@authentication.route('/v1/api/stream/login', methods=['POST'])
 def login():
     try:
         raw_data = request.get_json()
@@ -35,7 +35,7 @@ def login():
         print(e)
         return {"status": "failed", "msg": "Internal server error"}, 500
 
-@authentication.route('/v1/stream/app/refresh', methods=['POST'])
+@authentication.route('/v1/api/stream/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
     identity = get_jwt_identity()
@@ -43,7 +43,7 @@ def refresh():
     return {'status': 'success', 'access_token': access_token}, 200
 
 
-@authentication.route('/v1/stream/app/register', methods=['POST'])
+@authentication.route('/v1/api/stream/register', methods=['POST'])
 def register():
     try:
         raw_data = request.get_json()
