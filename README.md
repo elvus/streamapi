@@ -146,7 +146,7 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 ### Video Endpoints
 ### 1. Upload Video
 
-**Endpoint:** `POST /api/videos/upload`
+**Endpoint:** `POST /v1/api/videos/upload`
 
 - **Description:** Uploads a video file.
 - **Request:**
@@ -163,7 +163,7 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 
 ### 2. Stream Video
 
-**Endpoint:** `GET /v1/api/videosstream/:id`
+**Endpoint:** `GET /v1/api/videos/stream/:id`
 
 - **Description:** Streams a video by ID.
 - **Request:**
@@ -173,7 +173,7 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 
 ### 3. Get Video Metadata
 
-**Endpoint:** `GET /v1/api/videos:id/details`
+**Endpoint:** `GET /v1/api/videos/:id/details`
 
 - **Description:** Retrieves metadata for a stored video.
 - **Request:**
