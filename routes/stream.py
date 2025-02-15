@@ -62,25 +62,61 @@ def get_content(content_id):
 @stream.route('/v1/api/videos/upload', methods=['POST'])
 @jwt_required()
 def upload_video():
-    #convert video to hls = ffmpeg -i demo.flv -codec:a copy -start_number 0 -hls_time 10 -hls_list_size 0 -f hls demo.m3u8
     try:
-        file = request.files['file']
-        if file and allowed_file(file.filename):
-            full_filename = secure_filename(file.filename)
-            filename = Path(full_filename).stem
-            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-
-            if not os.path.exists(upload_path):
-                os.makedirs(upload_path)
-
-            video_path = os.path.join(upload_path, full_filename)
-            file.save(video_path)
+        # Validate file exists in request
+        if 'file' not in request.files:
+            return {'status': 'failed', 'message': 'No file part in the request'}, 400
             
-            video_output_path = os.path.join(upload_path, filename + '.m3u8')
-            ffmpeg.input(video_path).output(video_output_path, format='hls', acodec='copy', start_number=0, hls_time=10, hls_list_size=0).run()
+        file = request.files['file']
+        
+        # Validate file is selected and allowed
+        if file.filename == '':
+            return {'status': 'failed', 'message': 'No selected file'}, 400
+            
+        if not allowed_file(file.filename):
+            return {'status': 'failed', 'message': 'File type not allowed'}, 400
 
+        # Create secure paths
+        full_filename = secure_filename(file.filename)
+        filename = Path(full_filename).stem
+        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+
+        # Create directory if it doesn't exist
+        os.makedirs(upload_path, exist_ok=True)
+
+        # Save original file
+        video_path = os.path.join(upload_path, full_filename)
+        file.save(video_path)
+        
+        # Convert to HLS
+        video_output_path = os.path.join(upload_path, filename + '.m3u8')
+        try:
+            (
+                ffmpeg.input(video_path)
+                .output(video_output_path, 
+                       format='hls',
+                       acodec='copy',
+                       vcodec='libx264',
+                       start_number=0,
+                       hls_time=10,
+                       hls_list_size=0,
+                       hls_segment_type='fmp4')
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+        except ffmpeg.Error as e:
+            # Clean up if conversion fails
             os.remove(video_path)
-        return jsonify({'status': 'success', 'file_path': video_output_path}), 200
+            return {'status': 'failed', 'message': f'Video conversion failed: {e.stderr.decode()}'}, 500
+
+        # Clean up original file
+        os.remove(video_path)
+        
+        return jsonify({
+            'status': 'success',
+            'file_path': video_output_path,
+            'message': 'Video uploaded and converted successfully'
+        }), 200
+        
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
