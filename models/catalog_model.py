@@ -27,12 +27,15 @@ class StreamContent(BaseModel):
     cast: Optional[List[str]] = None
     seasons: Optional[List[Seasons]] = None
     duration_seconds: Optional[int] = None
+    intro_start_time: Optional[str] = None
+    intro_end_time: Optional[str] = None
     file_path: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='createdAt')
-    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), alias='updatedAt')
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     def to_json(self):
-        return self.model_dump()
+        data = self.model_dump()
+        return data
     
     def to_bson(self):
         data = self.model_dump(by_alias=True, exclude_none=True)
@@ -40,4 +43,12 @@ class StreamContent(BaseModel):
             data.pop("_id", None)
         if data.get("seasons") is None:
             data.pop("seasons", None)
-        return data        
+        if data.get("created_at") is None:
+            data["created_at"] = datetime.now(timezone.utc)
+        if data.get("updated_at") is None:
+            data["updated_at"] = datetime.now(timezone.utc)
+        if data.get("intro_start_time") is None:
+            data.pop("intro_start_time", None)
+        if data.get("intro_end_time") is None:
+            data.pop("intro_end_time", None)
+        return data

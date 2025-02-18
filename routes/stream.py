@@ -32,29 +32,17 @@ def list_content():
         cursor = db.catalog.find()
         content = [StreamContent(**item).to_json() for item in cursor]
         return jsonify(content), 200
-
-        # content = []
-        # for root, dirs, files in os.walk(current_app.config['UPLOAD_FOLDER']):
-        #     for file in files:
-        #         if file.endswith('.m3u8'):
-        #             content.append({
-        #                 'key': Path(file).stem,
-        #                 'id': Path(file).stem,
-        #                 'title': Path(file).stem,
-        #                 'duration_seconds': ffprobe.probe(os.path.join(root, file))['format']['duration'],
-        #                 'path': os.path.join(root, file)
-        #             })
-        # return jsonify(content), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
 
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
     try:
-        print(content_id)
         conn = Connection()
         db = conn.get_db()
         cursor = db.catalog.find_one({'uuid': content_id})
+        if cursor is None:
+            return {'status': 'failed', 'message': 'Content not found'}, 404
         return jsonify(StreamContent(**cursor).to_json()), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
