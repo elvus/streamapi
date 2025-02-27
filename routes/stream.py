@@ -43,6 +43,16 @@ def _generate_thumbnail(video_path, output_path):
     except ffmpeg.Error:
         return False
 
+def _validate_video_type(vtype):
+    """Validate and normalize video type"""
+    vtype = vtype.lower()
+    if vtype in ['tv-shows', 'tvshow']:
+        return 'tvshow'
+    elif vtype == 'movies':
+        return 'movie'
+    return None
+
+
 def _validate_tvshow_fields(request):
     required_fields = ['name', 'season', 'episode']
     missing_fields = [field for field in required_fields if field not in request.form]
@@ -88,6 +98,53 @@ def list_content():
         return jsonify(content), 200
     except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
+
+@stream.route('/v1/api/videos/<string:vtype>/list', methods=['GET'])
+def list_content_by_type(vtype):
+    try:
+        # Validate and normalize video type
+        normalized_type = _validate_video_type(vtype)
+        if not normalized_type:
+            return {'status': 'failed', 'message': 'Invalid content type. Use "tv-shows" or "movies"'}, 400
+
+        # Get database connection
+        conn = Connection()
+        db = conn.get_db()
+        
+        # Query database with pagination support
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        skip = (page - 1) * per_page
+        
+        # Get total count for pagination
+        total_count = db.catalog.count_documents({'type': normalized_type})
+        
+        # Query with pagination
+        cursor = db.catalog.find(
+            {'type': normalized_type},
+            skip=skip,
+            limit=per_page
+        )
+        
+        # Convert results to JSON
+        content = [StreamContent(**item).to_json() for item in cursor]
+        
+        return jsonify({
+            'status': 'success',
+            'data': content,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': (total_count + per_page - 1) // per_page
+            }
+        }), 200
+        
+    except ValueError as e:
+        return {'status': 'failed', 'message': 'Invalid pagination parameters'}, 400
+    except Exception as e:
+        current_app.logger.error(f'Error listing content: {str(e)}')
+        return {'status': 'failed', 'message': 'Internal server error'}, 500
 
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
