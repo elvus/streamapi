@@ -61,7 +61,7 @@ def _validate_tvshow_fields(request):
     return None
 
 def _get_upload_structure(video_type, request):
-    if video_type == 'tvShow':
+    if video_type == 'tvshow':
         validation_error = _validate_tvshow_fields(request)
         if validation_error:
             return validation_error
