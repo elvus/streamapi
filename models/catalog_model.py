@@ -6,9 +6,11 @@ from datetime import datetime, timezone
 
 class Episodes(BaseModel):
     episode_number: int
-    title: str
-    duration_seconds: int
-    file_path: str
+    title: Optional[int] = None
+    intro_start_time: Optional[str] = None
+    intro_end_time: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    file_path: Optional[str] = None
 
 class Seasons(BaseModel):
     season_number: int

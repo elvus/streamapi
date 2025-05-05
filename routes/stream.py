@@ -1,3 +1,4 @@
+from collections import defaultdict
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
@@ -6,7 +7,10 @@ from ffmpeg import _ffmpeg as ffmpeg
 from ffmpeg import _probe as ffprobe
 from connection.connection import Connection
 from flask_cors import cross_origin
+from multiprocessing import Process
 import os
+import json
+import shutil
 
 from models.catalog_model import StreamContent
 from connection.connection import Connection
@@ -27,20 +31,21 @@ def _validate_upload_request(request):
     return None
 
 def _create_upload_directory(base_path, *subdirs):
-    print(subdirs)
     upload_path = os.path.join(base_path, *subdirs)
     os.makedirs(upload_path, exist_ok=True)
     return upload_path
 
 def _generate_thumbnail(video_path, output_path):
+    print("start thumbnail")
     try:
         (
             ffmpeg.input(video_path, ss='00:00:01')
             .output(output_path, vframes=1)
             .run(capture_stdout=True, capture_stderr=True)
         )
+        print("finish thumbnail")
         return True
-    except ffmpeg.Error:
+    except Exception:
         return False
 
 def _validate_video_type(vtype):
@@ -52,23 +57,11 @@ def _validate_video_type(vtype):
         return 'movie'
     return None
 
-
-def _validate_tvshow_fields(request):
-    required_fields = ['name', 'season', 'episode']
-    missing_fields = [field for field in required_fields if field not in request.form]
-    if missing_fields:
-        return {'status': 'failed', 'message': f'Missing required fields: {", ".join(missing_fields)}'}, 400
-    return None
-
-def _get_upload_structure(video_type, request):
+def _get_upload_structure(video_type, metadata=None):
     if video_type == 'tvshow':
-        validation_error = _validate_tvshow_fields(request)
-        if validation_error:
-            return validation_error
-            
-        name = secure_filename(request.form['name'])
-        season = f"season{request.form['season'].zfill(2)}"  # Pad season with leading zeros
-        episode = f"episode{request.form['episode'].zfill(2)}"  # Pad episode with leading zeros
+        name = secure_filename(metadata['name'])
+        season = f"S{str(metadata['season']).zfill(2)}"  # Pad season with leading zeros
+        episode = f"E{str(metadata['episode']).zfill(2)}"  # Pad episode with leading zeros
         return [name, season, episode]
     elif video_type == 'movie':
         return []
@@ -76,12 +69,124 @@ def _get_upload_structure(video_type, request):
         return {'status': 'failed', 'message': 'Invalid video type'}, 400
 
 def _create_upload_path(base_path, video_type, subdirs, filename):
-    if video_type == 'tvShow':
+    if video_type == 'tvshow':
         # For TV shows, filename is not included in the directory structure
         return _create_upload_directory(base_path, *subdirs)
     else:
         # For movies, include filename in the directory structure
         return _create_upload_directory(base_path, *subdirs, filename)
+    
+def _convert_video_to_hls(video_path, video_output_path, hls_segment_time=10, hls_list_size=0, hls_segment_type='fmp4'):
+    """Convert video to HLS format with improved error handling and logging"""
+    try:
+        # Create temporary directory for segments
+        print("running in bg")
+        hls_params = {
+            'format': 'hls',
+            'acodec': 'copy',
+            'vcodec': 'libx264',
+            'start_number': 0,
+            'hls_time': hls_segment_time,
+            'hls_list_size': hls_list_size,
+            'hls_segment_type': hls_segment_type,
+            'hls_flags': 'independent_segments',
+        }
+        print("start running in bg")
+        # Run conversion
+        (
+            ffmpeg.input(video_path)
+            .output(video_output_path, **hls_params)
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        print("run in bg")
+        return True
+    except Exception as e:
+        print(e)
+        return False
+    finally:
+        # Print finish message
+        print("finish conversion")
+        # Clean up the original video file after conversion
+        if os.path.exists(video_path):
+            os.remove(video_path)
+            print(f"Deleted original video file: {video_path}")
+
+def _add_to_ffmpeg_queue(file, video_type, metadata=None):
+    """
+    Add a video file to the FFmpeg conversion queue
+    Returns: (video_path, video_output_path, process)
+    """
+    try:
+        # Validate file
+        if file.filename == '':
+            return None, None, {'status': 'failed', 'message': 'No selected file'}, 400
+        if not _allowed_file(file.filename):
+            return None, None, {'status': 'failed', 'message': 'File type not allowed'}, 400
+        if file.content_length > current_app.config.get('MAX_FILE_SIZE', 2 * 1024 * 1024 * 1024):
+            return None, None, {'status': 'failed', 'message': 'File size exceeds maximum allowed'}, 400
+
+        # Get upload structure based on video type and metadata
+        subdirs_or_error = _get_upload_structure(video_type, metadata) if metadata else []
+        if isinstance(subdirs_or_error, tuple):
+            return None, None, subdirs_or_error
+
+        # Create upload directory
+        full_filename = secure_filename(file.filename)
+        filename = Path(full_filename).stem
+        upload_path = _create_upload_path(
+            current_app.config['UPLOAD_FOLDER'],
+            video_type,
+            subdirs_or_error,
+            filename
+        )
+        # Define paths
+        video_path = os.path.join(upload_path, full_filename)
+        video_output_path = os.path.join(upload_path, filename + '.m3u8')
+
+        # Skip if output already exists
+        if os.path.exists(video_output_path):
+            return None, video_output_path, None
+
+        # Save original file
+        file.save(video_path)
+
+        # Generate thumbnail
+        thumbnail_path = os.path.join(upload_path, 'thumbnail.jpg')
+        _generate_thumbnail(video_path, thumbnail_path)
+
+        # Get HLS config
+        hls_config = {
+            'hls_segment_time': current_app.config.get('HLS_SEGMENT_TIME', 10),
+            'hls_list_size': current_app.config.get('HLS_LIST_SIZE', 0),
+            'hls_segment_type': current_app.config.get('HLS_SEGMENT_TYPE', 'fmp4')
+        }
+
+        # Start conversion process
+        p = Process(target=_convert_video_to_hls, args=(
+            video_path,
+            video_output_path,
+            hls_config['hls_segment_time'],
+            hls_config['hls_list_size'],
+            hls_config['hls_segment_type']
+        ))
+        p.start()
+
+        return video_path, video_output_path, p
+
+    except Exception as e:
+        current_app.logger.error(f'Queue error: {str(e)}')
+        if 'video_path' in locals() and os.path.exists(video_path):
+            os.remove(video_path)
+        return None, None, None
+
+def _get_season_episodes(seasons):
+    episodes = defaultdict(list)
+    for season in seasons:
+        episodes[season['season']].append({
+            'title': season['title'],
+            'episode_number':season['episode']
+        })
+    return episodes
 
 @stream.route('/v1/api/videos/stream/<path:filename>', methods=['GET'])
 def stream_video(filename):
@@ -146,6 +251,63 @@ def list_content_by_type(vtype):
         current_app.logger.error(f'Error listing content: {str(e)}')
         return {'status': 'failed', 'message': 'Internal server error'}, 500
 
+@stream.route('/v1/api/videos/<string:content_id>/season/<int:season>/episode/<int:episode>', methods=['GET'])
+def get_episode(content_id, season, episode):
+    try:
+        conn = Connection()
+        db = conn.get_db()
+        cursor = db.catalog.aggregate([
+            { 
+                "$match": {
+                    "uuid": content_id,
+                    "seasons.season_number": season
+                }
+            },
+            { 
+                "$unwind": "$seasons" 
+            },
+            { 
+                "$match": { 
+                    "seasons.season_number": season
+                } 
+            },
+            { 
+                "$addFields": {
+                "targetEpisode": {
+                    "$first": {
+                    "$filter": {
+                        "input": "$seasons.episodes",
+                        "as": "episode",
+                        "cond": { "$eq": ["$$episode.episode_number", episode] }
+                    }
+                    }
+                }
+                }
+            },
+            { 
+                "$project": {
+                    "_id": 0,
+                    "uuid": 1,
+                    "title": 2,
+                    "type": "video",
+                    "release_year": 3,
+                    "genre": 4,
+                    "rating": 5,
+                    "season_number": "$seasons.season_number",
+                    "episode": "$targetEpisode.episode_number",
+                    "file_path": "$targetEpisode.file_path"
+                }
+            }
+        ])
+        
+        if cursor is None:
+            return {'status': 'failed', 'message': 'Content not found'}, 404
+        
+        result = next(cursor, None)
+        return jsonify(result), 200
+    except Exception as e:
+        return {'status': 'failed', 'message': str(e)}, 500
+
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
     try:
@@ -161,92 +323,62 @@ def get_content(content_id):
 @stream.route('/v1/api/videos/upload', methods=['POST'])
 @jwt_required()
 def upload_video():
+    """Handle video upload with improved error handling and async processing"""
     try:
         # Validate request
         validation_error = _validate_upload_request(request)
         if validation_error:
             return validation_error
-            
-        file = request.files['file']
+
         video_type = request.form['type']
-        
-        # Validate file
-        if file.filename == '':
-            return {'status': 'failed', 'message': 'No selected file'}, 400
-        if not _allowed_file(file.filename):
-            return {'status': 'failed', 'message': 'File type not allowed'}, 400
-        if file.content_length > current_app.config.get('MAX_FILE_SIZE', 2 * 1024 * 1024 * 1024):  # Default 2GB
-            return {'status': 'failed', 'message': 'File size exceeds maximum allowed'}, 400
+        values = json.loads(request.form['values'])
 
-        # Validate video type specific fields
-        subdirs_or_error = _get_upload_structure(video_type, request)
-        if isinstance(subdirs_or_error, tuple):  # If it's an error response
-            return subdirs_or_error
-        subdirs = subdirs_or_error
-
-        # Create upload directory
-        full_filename = secure_filename(file.filename)
-        filename = Path(full_filename).stem
-        upload_path = _create_upload_path(
-            current_app.config['UPLOAD_FOLDER'],
-            video_type,
-            subdirs,
-            filename
-        )
-
-        # Save original file
-        video_path = os.path.join(upload_path, full_filename)
-        file.save(video_path)
-        
-        # Generate thumbnail
-        thumbnail_path = os.path.join(upload_path, 'thumbnail.jpg')
-        thumbnail_generated = _generate_thumbnail(video_path, thumbnail_path)
-        
-        # Convert to HLS
-        video_output_path = os.path.join(upload_path, filename + '.m3u8')
-        try:
-            hls_params = {
-                'format': 'hls',
-                'acodec': 'copy',
-                'vcodec': 'libx264',
-                'start_number': 0,
-                'hls_time': current_app.config.get('HLS_SEGMENT_TIME', 10),
-                'hls_list_size': current_app.config.get('HLS_LIST_SIZE', 0),
-                'hls_segment_type': current_app.config.get('HLS_SEGMENT_TYPE', 'fmp4'),
-                'hls_flags': 'independent_segments'
-            }
+        if video_type == 'tvshow':
+            # Handle multiple files for TV shows
+            metadata_list = request.form.getlist('metadata')
+            files = request.files.getlist('file')
+            values['type'] = video_type
+            values['seasons'] = []
+            episodes = _get_season_episodes(values['show_details'])
+            # Process each file with its metadata
+            for file, metadata in zip(files, metadata_list):
+                metadata = json.loads(metadata)
+                video_path, video_output_path, process = _add_to_ffmpeg_queue(file, video_type, metadata)
+                if isinstance(process, tuple):  # Error case
+                    return process
+                                
+                if process or video_output_path:  # New conversion started or file already exists
+                    for episode in episodes[metadata['season']]:
+                        if episode['episode_number'] == metadata['episode']:
+                            episode['file_path'] = video_output_path
+                    if len(values['seasons']) > 0:
+                        if metadata['season'] not in [s['season_number'] for s in values['seasons']]:
+                            values['seasons'].append({
+                                'season_number': metadata['season'],
+                                'episodes': episodes[metadata['season']]
+                            })
+                    else:
+                        values['seasons'].append({
+                            'season_number': metadata['season'],
+                            'episodes': episodes[metadata['season']]
+                        })
+        else:
+            # Handle single file for movies
+            file = request.files['file']
+            video_path, video_output_path, process = _add_to_ffmpeg_queue(file, video_type)
+            if isinstance(process, tuple):  # Error case
+                return process
             
-            (
-                ffmpeg.input(video_path)
-                .output(video_output_path, **hls_params)
-                .run(capture_stdout=True, capture_stderr=True)
-            )
-        except ffmpeg.Error as e:
-            # Clean up if conversion fails
-            os.remove(video_path)
-            if os.path.exists(thumbnail_path):
-                os.remove(thumbnail_path)
-            current_app.logger.error(f'Video conversion failed: {e.stderr.decode()}')
-            return {'status': 'failed', 'message': 'Video conversion failed'}, 500
+            if process or video_output_path:  # New conversion started
+                values['file_path'] = video_output_path
 
-        # Clean up original file
-        os.remove(video_path)
-        
-        return jsonify({
-            'status': 'success',
-            'file_path': video_output_path,
-            'thumbnail_path': thumbnail_path if thumbnail_generated else None,
-            'message': 'Video uploaded and converted successfully',
-            'type': video_type,
-            'metadata': {
-                'season': subdirs[1] if video_type == 'tvShow' else None,
-                'episode': subdirs[2] if video_type == 'tvShow' else None
-            }
-        }), 200
+        content = StreamContent(**values)
+        insert_result = db.catalog.insert_one(content.to_bson())
+        return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201
         
     except Exception as e:
-        print(e)
-        return {'status': 'failed', 'message': 'Internal server error'}, 500
+        current_app.logger.error(f'Upload error: {str(e)}')
+        return {'status': 'failed', 'message': str(e)}, 500
     
 @stream.route('/v1/api/videos', methods=['POST'])
 @jwt_required()
