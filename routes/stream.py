@@ -251,11 +251,17 @@ def list_content_by_type(vtype):
         current_app.logger.error(f'Error listing content: {str(e)}')
         return {'status': 'failed', 'message': 'Internal server error'}, 500
 
-@stream.route('/v1/api/videos/<string:content_id>/season/<int:season>/episode/<int:episode>', methods=['GET'])
-def get_episode(content_id, season, episode):
+@stream.route('/v1/api/videos/<string:content_id>/season/<int:season>', methods=['GET'])
+def get_episode(content_id, season):
     try:
         conn = Connection()
         db = conn.get_db()
+        
+        # Validate content_id and season
+        if not content_id or not isinstance(season, int):
+            return {'status': 'failed', 'message': 'Invalid content_id or season'}, 400
+        
+        # Aggregate query to find the specific episode
         cursor = db.catalog.aggregate([
             { 
                 "$match": {
@@ -263,50 +269,43 @@ def get_episode(content_id, season, episode):
                     "seasons.season_number": season
                 }
             },
-            { 
-                "$unwind": "$seasons" 
+            {
+                "$unwind": "$seasons"
             },
-            { 
-                "$match": { 
-                    "seasons.season_number": season
-                } 
+            {
+                "$unwind": "$seasons.episodes"
             },
-            { 
-                "$addFields": {
-                "targetEpisode": {
-                    "$first": {
-                    "$filter": {
-                        "input": "$seasons.episodes",
-                        "as": "episode",
-                        "cond": { "$eq": ["$$episode.episode_number", episode] }
-                    }
-                    }
-                }
-                }
-            },
-            { 
+            {
                 "$project": {
-                    "_id": 0,
                     "uuid": 1,
-                    "title": 2,
-                    "type": "video",
-                    "release_year": 3,
-                    "genre": 4,
-                    "rating": 5,
+                    "title": 1,
+                    "release_year": 1,
+                    "genre": 1,
+                    "rating": 1,
+                    "type": { "$literal": "video" },
                     "season_number": "$seasons.season_number",
-                    "episode": "$targetEpisode.episode_number",
-                    "file_path": "$targetEpisode.file_path"
+                    "episode": "$seasons.episodes.episode_number",
+                    "file_path": "$seasons.episodes.file_path",
+                    "_id": 0
                 }
             }
         ])
         
-        if cursor is None:
+        # Collect all results into a list
+        results = list(cursor)
+        
+        # Check if the list is empty
+        if not results:
             return {'status': 'failed', 'message': 'Content not found'}, 404
         
-        result = next(cursor, None)
-        return jsonify(result), 200
+        # Close the cursor to free up resources
+        cursor.close()
+        
+        return jsonify(results), 200
+        
     except Exception as e:
-        return {'status': 'failed', 'message': str(e)}, 500
+        current_app.logger.error(f'Error fetching episode: {str(e)}')
+        return {'status': 'failed', 'message': 'Internal server error'}, 500
 
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
