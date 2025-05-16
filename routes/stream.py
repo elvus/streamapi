@@ -1,16 +1,19 @@
 from collections import defaultdict
+import datetime
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from ffmpeg import _ffmpeg as ffmpeg
-from ffmpeg import _probe as ffprobe
+from ffmpeg import probe as ffprobe
 from connection.connection import Connection
 from flask_cors import cross_origin
 from multiprocessing import Process
 import os
 import json
 import shutil
+from typing import List, Dict, Any
+import logging
 
 from models.catalog_model import StreamContent
 from connection.connection import Connection
@@ -18,6 +21,8 @@ from connection.connection import Connection
 stream = Blueprint('stream', __name__)
 conn = Connection()
 db = conn.get_db()
+
+logger = logging.getLogger(__name__)
 
 def _allowed_file(filename):
     return '.' in filename and \
@@ -39,7 +44,7 @@ def _generate_thumbnail(video_path, output_path):
     print("start thumbnail")
     try:
         (
-            ffmpeg.input(video_path, ss='00:00:01')
+            ffmpeg.input(video_path, ss='00:00:05')
             .output(output_path, vframes=1)
             .run(capture_stdout=True, capture_stderr=True)
         )
@@ -111,6 +116,21 @@ def _convert_video_to_hls(video_path, video_output_path, hls_segment_time=10, hl
             os.remove(video_path)
             print(f"Deleted original video file: {video_path}")
 
+def _get_video_duration(video_path: str) -> float:
+    """
+    Get the duration of a video file using ffprobe.
+    Args:
+        video_path (str): Path to the video file.
+    Returns:
+        float: Duration of the video in seconds.
+    """
+    try:
+        duration = ffprobe(video_path)["format"]["duration"]
+        return duration
+    except Exception as e:
+        current_app.logger.error(f'Error getting video duration: {str(e)}')
+        return 0.0
+
 def _add_to_ffmpeg_queue(file, video_type, metadata=None):
     """
     Add a video file to the FFmpeg conversion queue
@@ -179,13 +199,38 @@ def _add_to_ffmpeg_queue(file, video_type, metadata=None):
             os.remove(video_path)
         return None, None, None
 
-def _get_season_episodes(seasons):
+def _get_season_episodes(seasons: List[Dict[str, Any]]) -> Dict[int, List[Dict[str, Any]]]:
+    """
+    Organize episodes by season from a list of season data.
+
+    Args:
+        seasons (List[Dict[str, Any]]): List of season data containing episode information.
+
+    Returns:
+        Dict[int, List[Dict[str, Any]]]: A dictionary where keys are season numbers and values are lists of episode data.
+    """
     episodes = defaultdict(list)
+    
     for season in seasons:
-        episodes[season['season']].append({
-            'title': season['title'],
-            'episode_number':season['episode']
-        })
+        try:
+            season_number = season['season']
+            episode_data = {
+                'title': season['title'],
+                'episode_number': season['episode']
+            }
+            
+            if 'intro_start_time' in season and season['intro_start_time']:
+                episode_data['intro_start_time'] = season['intro_start_time']
+                episode_data['intro_end_time'] = season['intro_end_time']
+            
+            if 'next_episode_time' in season and season['next_episode_time']:
+                episode_data['next_episode_time'] = season['next_episode_time']
+
+            episodes[season_number].append(episode_data)
+        except KeyError as e:
+            logger.error(f"Missing key in season data: {e}")
+            continue
+    
     return episodes
 
 @stream.route('/v1/api/videos/stream/<path:filename>', methods=['GET'])
@@ -285,6 +330,9 @@ def get_episode(content_id, season):
                     "type": { "$literal": "video" },
                     "season_number": "$seasons.season_number",
                     "episode": "$seasons.episodes.episode_number",
+                    "intro_start_time": "$seasons.episodes.intro_start_time",
+                    "intro_end_time":"$seasons.episodes.intro_end_time",
+                    "next_episode_time": "$seasons.episodes.next_episode_time",
                     "file_path": "$seasons.episodes.file_path",
                     "_id": 0
                 }
@@ -331,7 +379,6 @@ def upload_video():
 
         video_type = request.form['type']
         values = json.loads(request.form['values'])
-
         if video_type == 'tvshow':
             # Handle multiple files for TV shows
             metadata_list = request.form.getlist('metadata')
@@ -350,6 +397,7 @@ def upload_video():
                     for episode in episodes[metadata['season']]:
                         if episode['episode_number'] == metadata['episode']:
                             episode['file_path'] = video_output_path
+                            episode['duration'] = _get_video_duration(video_path)
                     if len(values['seasons']) > 0:
                         if metadata['season'] not in [s['season_number'] for s in values['seasons']]:
                             values['seasons'].append({
@@ -370,7 +418,7 @@ def upload_video():
             
             if process or video_output_path:  # New conversion started
                 values['file_path'] = video_output_path
-
+        print(values)
         content = StreamContent(**values)
         insert_result = db.catalog.insert_one(content.to_bson())
         return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201

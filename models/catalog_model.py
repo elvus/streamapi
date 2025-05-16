@@ -6,10 +6,11 @@ from datetime import datetime, timezone
 
 class Episodes(BaseModel):
     episode_number: int
-    title: Optional[int] = None
+    title: Optional[str] = None
     intro_start_time: Optional[str] = None
     intro_end_time: Optional[str] = None
-    duration_seconds: Optional[int] = None
+    next_episode_time: Optional[str] = None
+    duration_seconds: Optional[float] = None
     file_path: Optional[str] = None
 
 class Seasons(BaseModel):
@@ -28,7 +29,7 @@ class StreamContent(BaseModel):
     description: Optional[str] = None
     cast: Optional[List[str]] = None
     seasons: Optional[List[Seasons]] = None
-    duration_seconds: Optional[int] = None
+    duration_seconds: Optional[float] = None
     intro_start_time: Optional[str] = None
     intro_end_time: Optional[str] = None
     file_path: Optional[str] = None
