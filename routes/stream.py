@@ -397,7 +397,7 @@ def upload_video():
                     for episode in episodes[metadata['season']]:
                         if episode['episode_number'] == metadata['episode']:
                             episode['file_path'] = video_output_path
-                            episode['duration'] = _get_video_duration(video_path)
+                            episode['duration_seconds'] = _get_video_duration(video_path)
                     if len(values['seasons']) > 0:
                         if metadata['season'] not in [s['season_number'] for s in values['seasons']]:
                             values['seasons'].append({
