@@ -90,7 +90,7 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
 ## API Endpoints
 ### Authentication Endpoints
 ### 1. Register User
-***Endpoint:*** `POST /v1/api/stream/login`
+***Endpoint:*** `POST /v1/api/stream/register`
 - **Description:** Registers a new user.
 - **Request:**
   - Headers: `Content-Type: application/json`
