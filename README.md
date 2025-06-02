@@ -227,6 +227,52 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
         }
     ]
     ```
+## UI Setup
+
+StreamAPI comes with a user interface provided by the `streamui` repository. To set up the UI, follow these steps:
+
+### 1. Clone the `streamui` Repository
+
+```sh
+git clone https://github.com/elvus/streamui.git
+cd streamui
+```
+
+### 2. Install Dependencies
+
+```sh
+npm install
+```
+
+### 3. Configure the `.env.local` File
+
+Create a `.env.local` file in the `streamui` directory and add the following environment variables:
+
+```env
+VITE_API_BASE_URL=http://localhost:3001
+```
+
+Replace `http://localhost:3001` with the URL where your StreamAPI backend is running.
+
+### 4. Start the Development Server
+
+```sh
+npm run dev
+```
+
+The UI will be available at `http://localhost:5173`.
+
+### 5. Connect to the Backend
+
+Ensure that your StreamAPI backend is running and that the `CORS_ORIGIN` in your `.env` file is set to `http://localhost:5173` to allow the UI to communicate with the backend.
+
+```env
+CORS_ORIGIN=http://localhost:5173
+```
+
+### 6. Access the UI
+
+Open your browser and navigate to `http://localhost:5173` to access the StreamAPI user interface.
 
 ## Features
 
