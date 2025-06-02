@@ -98,7 +98,8 @@ Make sure to replace `your_video.mp4` with the actual file path of the video you
     ```json
     {
       "username": "user",
-      "password": "password"
+      "password": "password",
+      "email": "user@mail.com"
     }
     ```
 - **Response:**
