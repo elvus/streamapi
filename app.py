@@ -8,19 +8,26 @@ from routes.users import users
 from routes.authentication import authentication
 from routes.healthz import healthz
 
+# Load environment variables
 load_dotenv()
 
+# Flask app configuration
 app = Flask(__name__)
 jwt = JWTManager(app)
-CORS(app, supports_credentials=True, origins=os.getenv('CORS_ORIGIN').split(','))
 
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER')
+# CORS configuration
+CORS(app, supports_credentials=True, origins=os.getenv('CORS_ORIGIN', 'http://localhost:5173').split(','))
+
+# File upload configuration
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', '/code/uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'webm'}
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
-app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  # Store JWT in cookies
-app.config["JWT_COOKIE_SECURE"] = False  # Set to True in production (HTTPS only)
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Set to True for CSRF protection
 
+# JWT configuration
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')
+app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  # Store JWT in cookies
+app.config["JWT_COOKIE_SECURE"] = True  # Set to True in production (HTTPS only)
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Set to True for CSRF protection
+app.config["JWT_COOKIE_SAMESITE"] = 'None'  # Allow cookies to be sent with cross-site requests
 
 app.register_blueprint(stream)
 app.register_blueprint(users)

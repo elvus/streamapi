@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, set_access_cookies, set_refresh_cookies, unset_jwt_cookies
 from flask_jwt_extended import create_refresh_token
 
 from connection.connection import Connection
@@ -27,8 +27,8 @@ def login():
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
         response = jsonify({'status': 'success', 'user': user.to_json()})
-        response.set_cookie('access_token_cookie', access_token, httponly=True, secure=False, samesite='Lax')
-        response.set_cookie('refresh_token_cookie', refresh_token, httponly=True, secure=False, samesite='Lax')
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
         return response, 200
     
     except Exception as e:
@@ -61,3 +61,9 @@ def register():
         return {'status': 'success', 'msg': 'User created successfully'}, 200
     except Exception as e:
         return {"status": "failed", "msg": "Internal server error"}, 500
+    
+@authentication.route('/v1/api/stream/logout', methods=['POST'])
+def logout():
+    response = jsonify({"msg": "logout successful"})
+    unset_jwt_cookies(response)
+    return response

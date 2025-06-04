@@ -416,7 +416,7 @@ def upload_video():
             
             if process or video_output_path:  # New conversion started
                 values['file_path'] = video_output_path
-        print(values)
+                values['duration_seconds'] = _get_video_duration(video_path)
         content = StreamContent(**values)
         insert_result = db.catalog.insert_one(content.to_bson())
         return {'status': 'success', 'id': str(insert_result.inserted_id)}, 201

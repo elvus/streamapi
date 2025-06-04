@@ -4,18 +4,18 @@ services:
         ports:
         - "5000:5000"
         volumes:
-        - .:/code
+        - ./uploads:/app/uploads
         depends_on:
         - streamdb
         environment:
         - MONGO_URI=mongodb://streamdb:27017/test
-        - UPLOAD_FOLDER=/code/uploads
+        - UPLOAD_FOLDER=uploads/
         - JWT_SECRET_KEY=secret
         - CORS_ORIGIN=http://127.0.0.1:5173,http://localhost:5173
     streamdb:
         image: mongo:latest
         volumes:
-        - mongo-data:/data/db
+        - ./mongo-data:/data/db
         ports:
         - "27017:27017"
 volumes:
