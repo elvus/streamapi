@@ -12,6 +12,7 @@ class Episodes(BaseModel):
     next_episode_time: Optional[str] = None
     duration_seconds: Optional[float] = None
     file_path: Optional[str] = None
+    status: str
 
 class Seasons(BaseModel):
     season_number: int
@@ -33,6 +34,7 @@ class StreamContent(BaseModel):
     intro_start_time: Optional[str] = None
     intro_end_time: Optional[str] = None
     file_path: Optional[str] = None
+    status: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

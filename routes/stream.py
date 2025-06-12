@@ -1,4 +1,5 @@
 from collections import defaultdict
+from uuid import uuid4
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_jwt_extended import jwt_required
 from werkzeug.utils import secure_filename
@@ -78,41 +79,6 @@ def _create_upload_path(base_path, video_type, subdirs, filename):
     else:
         # For movies, include filename in the directory structure
         return _create_upload_directory(base_path, *subdirs, filename)
-    
-def _convert_video_to_hls(video_path, video_output_path, hls_segment_time=10, hls_list_size=0, hls_segment_type='fmp4'):
-    """Convert video to HLS format with improved error handling and logging"""
-    try:
-        # Create temporary directory for segments
-        print("running in bg")
-        hls_params = {
-            'format': 'hls',
-            'acodec': 'copy',
-            'vcodec': 'libx264',
-            'start_number': 0,
-            'hls_time': hls_segment_time,
-            'hls_list_size': hls_list_size,
-            'hls_segment_type': hls_segment_type,
-            'hls_flags': 'independent_segments',
-        }
-        print("start running in bg")
-        # Run conversion
-        (
-            ffmpeg.input(video_path)
-            .output(video_output_path, **hls_params)
-            .run(capture_stdout=True, capture_stderr=True)
-        )
-        print("run in bg")
-        return True
-    except Exception as e:
-        print(e)
-        return False
-    finally:
-        # Print finish message
-        print("finish conversion")
-        # Clean up the original video file after conversion
-        if os.path.exists(video_path):
-            os.remove(video_path)
-            print(f"Deleted original video file: {video_path}")
 
 def _get_video_duration(video_path: str) -> float:
     """
@@ -129,7 +95,7 @@ def _get_video_duration(video_path: str) -> float:
         current_app.logger.error(f'Error getting video duration: {str(e)}')
         return 0.0
 
-def _add_to_ffmpeg_queue(file, video_type, metadata=None):
+def _add_to_ffmpeg_queue(uuid, file, video_type, metadata=None):
     """
     Add a video file to the FFmpeg conversion queue
     Returns: (video_path, video_output_path, process)
@@ -181,6 +147,7 @@ def _add_to_ffmpeg_queue(file, video_type, metadata=None):
 
         # Start conversion process
         p = Process(target=_convert_video_to_hls, args=(
+            uuid,
             video_path,
             video_output_path,
             hls_config['hls_segment_time'],
@@ -196,6 +163,39 @@ def _add_to_ffmpeg_queue(file, video_type, metadata=None):
         if 'video_path' in locals() and os.path.exists(video_path):
             os.remove(video_path)
         return None, None, None
+
+def _convert_video_to_hls(uuid, video_path, video_output_path, hls_segment_time=10, hls_list_size=0, hls_segment_type='fmp4'):
+    """Convert video to HLS format with improved error handling and logging"""
+    try:
+        # Create temporary directory for segments
+        hls_params = {
+            'format': 'hls',
+            'acodec': 'copy',
+            'vcodec': 'libx264',
+            'start_number': 0,
+            'hls_time': hls_segment_time,
+            'hls_list_size': hls_list_size,
+            'hls_segment_type': hls_segment_type,
+            'hls_flags': 'independent_segments',
+        }
+        # Run conversion
+        (
+            ffmpeg.input(video_path)
+            .output(video_output_path, **hls_params)
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+        _update_status(uuid)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+    finally:
+        # Print finish message
+        print("finish conversion")
+        # Clean up the original video file after conversion
+        if os.path.exists(video_path):
+            os.remove(video_path)
+            print(f"Deleted original video file: {video_path}")
 
 def _get_season_episodes(seasons: List[Dict[str, Any]]) -> Dict[int, List[Dict[str, Any]]]:
     """
@@ -231,6 +231,33 @@ def _get_season_episodes(seasons: List[Dict[str, Any]]) -> Dict[int, List[Dict[s
     
     return episodes
 
+def _update_status(content_id: str) -> bool:
+    """
+    Update the status of a content item to "Ready" in the database.
+    
+    Args:
+        content_id (str): The UUID of the content to update
+        
+    Returns:
+        bool: True if update was successful, False otherwise
+    """
+    try:
+        result = db.catalog.update_one(
+            {'uuid': content_id},
+            {'$set': {'status': 'Ready'}}
+        )
+        
+        if result.modified_count > 0:
+            logger.info(f'Successfully updated status to Ready for content {content_id}')
+            return True
+        else:
+            logger.warning(f'No content found with ID {content_id} to update status')
+            return False
+            
+    except Exception as e:
+        logger.error(f'Error updating status for content {content_id}: {str(e)}')
+        return False
+
 @stream.route('/v1/api/videos/stream/<path:filename>', methods=['GET'])
 def stream_video(filename):
     #ffmpeg -i input.mkv -c:v libx264 -c:a aac -f dash -hls_segment_type fmp4 output.m`pd
@@ -239,8 +266,6 @@ def stream_video(filename):
 @stream.route('/v1/api/videos', methods=['GET'])
 def list_content():
     try:
-        conn = Connection()
-        db = conn.get_db()
         cursor = db.catalog.find()
         content = [StreamContent(**item).to_json() for item in cursor]
         return jsonify(content), 200
@@ -253,12 +278,7 @@ def list_content_by_type(vtype):
         # Validate and normalize video type
         normalized_type = _validate_video_type(vtype)
         if not normalized_type:
-            return {'status': 'failed', 'message': 'Invalid content type. Use "tv-shows" or "movies"'}, 400
-
-        # Get database connection
-        conn = Connection()
-        db = conn.get_db()
-        
+            return {'status': 'failed', 'message': 'Invalid content type. Use "tv-shows" or "movies"'}, 400        
         # Query database with pagination support
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 10))
@@ -297,9 +317,6 @@ def list_content_by_type(vtype):
 @stream.route('/v1/api/videos/<string:content_id>/season/<int:season>', methods=['GET'])
 def get_episode(content_id, season):
     try:
-        conn = Connection()
-        db = conn.get_db()
-        
         # Validate content_id and season
         if not content_id or not isinstance(season, int):
             return {'status': 'failed', 'message': 'Invalid content_id or season'}, 400
@@ -356,8 +373,6 @@ def get_episode(content_id, season):
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
     try:
-        conn = Connection()
-        db = conn.get_db()
         cursor = db.catalog.find_one({'uuid': content_id})
         if cursor is None:
             return {'status': 'failed', 'message': 'Content not found'}, 404
@@ -374,9 +389,12 @@ def upload_video():
         validation_error = _validate_upload_request(request)
         if validation_error:
             return validation_error
-
+        
+        uuid = str(uuid4())
         video_type = request.form['type']
         values = json.loads(request.form['values'])
+        values['status'] = "In-Progress"
+        values['uuid'] = uuid
         if video_type == 'tvshow':
             # Handle multiple files for TV shows
             metadata_list = request.form.getlist('metadata')
@@ -387,7 +405,7 @@ def upload_video():
             # Process each file with its metadata
             for file, metadata in zip(files, metadata_list):
                 metadata = json.loads(metadata)
-                video_path, video_output_path, process = _add_to_ffmpeg_queue(file, video_type, metadata)
+                video_path, video_output_path, process = _add_to_ffmpeg_queue(uuid, file, video_type, metadata)
                 if isinstance(process, tuple):  # Error case
                     return process
                                 
@@ -410,7 +428,7 @@ def upload_video():
         else:
             # Handle single file for movies
             file = request.files['file']
-            video_path, video_output_path, process = _add_to_ffmpeg_queue(file, video_type)
+            video_path, video_output_path, process = _add_to_ffmpeg_queue(uuid, file, video_type)
             if isinstance(process, tuple):  # Error case
                 return process
             
@@ -429,8 +447,6 @@ def upload_video():
 @jwt_required()
 def create_content():
     try:
-        conn = Connection()
-        db = conn.get_db()
         raw_data = request.get_json()
         content = StreamContent(**raw_data)
         insert_result = db.catalog.insert_one(content.to_bson())
