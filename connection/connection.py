@@ -32,8 +32,4 @@ class Connection:
         collection = self.db[collection_name]
         indexes = collection.index_information()
         if 'expires_at_1' not in indexes:
-            collection.create_index([('expires_at', ASCENDING)], name='expires_at_1')
-
-# Example usage:
-# conn = Connection()
-# conn.create_uuid_index('your_collection_name')
+            collection.create_index([('expires_at', ASCENDING)], expireAfterSeconds=0, name='expires_at_1')

@@ -7,6 +7,7 @@ from flask_jwt_extended.exceptions import JWTDecodeError
 
 from models.objectid import PydanticObjectId
 from models.user_model import User
+from utils.hash import hash_password, verify_password
 
 authentication = Blueprint('authentication', __name__)
 
@@ -22,7 +23,7 @@ def login():
             return {'status': 'failed', 'msg': 'Username and password are required'}, 400
         
         cursor = db.users.find_one({'username': username})
-        if cursor is None or not User.verify_password(User(**cursor), password):
+        if cursor is None or not verify_password(password, User(**cursor)):
             return {'status': 'failed', 'msg': 'Username or password is incorrect'}, 401
         
         user = User(**cursor)
@@ -51,7 +52,7 @@ def register():
         db = current_app.config['db']
         raw_data = request.get_json()
         username = raw_data.get('username')
-        password = raw_data.get('password')
+        password = hash_password(raw_data.get('password'))
         email = raw_data.get('email')
         privileges = ['read', 'write', 'update']
         user = User(username=username, password=password, email=email, privileges=privileges)

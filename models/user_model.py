@@ -44,6 +44,3 @@ class User(BaseModel):
         if data.get("role") is None:
             data.pop("role", None)
         return data
-    
-    def verify_password(self, password):
-        return self.password == password
