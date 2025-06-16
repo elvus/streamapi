@@ -15,6 +15,7 @@ class Connection:
             self.db = self.client.get_database()
             self.db.command("ping")
             self.create_uuid_index('catalog')
+            self.create_expires_at_index('token_blacklist')
         except Exception as e:
             raise ConnectionError(f"Unable to connect to the database: {str(e)}")
 
@@ -26,6 +27,12 @@ class Connection:
         indexes = collection.index_information()
         if 'uuid_1' not in indexes:
             collection.create_index([('uuid', ASCENDING)], name='uuid_1')
+    
+    def create_expires_at_index(self, collection_name):
+        collection = self.db[collection_name]
+        indexes = collection.index_information()
+        if 'expires_at_1' not in indexes:
+            collection.create_index([('expires_at', ASCENDING)], name='expires_at_1')
 
 # Example usage:
 # conn = Connection()

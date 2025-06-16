@@ -20,6 +20,7 @@ class User(BaseModel):
     username: str
     password: str
     email: str
+    avatar: Optional[str] = None
     privileges: list
     role: Optional[str] = None
     profile: Optional[Profile] = None

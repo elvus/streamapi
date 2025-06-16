@@ -18,9 +18,6 @@ from models.catalog_model import StreamContent
 from connection.connection import Connection
 
 stream = Blueprint('stream', __name__)
-conn = Connection()
-db = conn.get_db()
-
 logger = logging.getLogger(__name__)
 
 def _allowed_file(filename):
@@ -242,6 +239,7 @@ def _update_status(content_id: str) -> bool:
         bool: True if update was successful, False otherwise
     """
     try:
+        db = current_app.config['db']
         result = db.catalog.update_one(
             {'uuid': content_id},
             {'$set': {'status': 'Ready'}}
@@ -266,6 +264,7 @@ def stream_video(filename):
 @stream.route('/v1/api/videos', methods=['GET'])
 def list_content():
     try:
+        db = current_app.config['db']
         cursor = db.catalog.find()
         content = [StreamContent(**item).to_json() for item in cursor]
         return jsonify(content), 200
@@ -275,6 +274,7 @@ def list_content():
 @stream.route('/v1/api/videos/<string:vtype>/list', methods=['GET'])
 def list_content_by_type(vtype):
     try:
+        db = current_app.config['db']
         # Validate and normalize video type
         normalized_type = _validate_video_type(vtype)
         if not normalized_type:
@@ -317,6 +317,7 @@ def list_content_by_type(vtype):
 @stream.route('/v1/api/videos/<string:content_id>/season/<int:season>', methods=['GET'])
 def get_episode(content_id, season):
     try:
+        db = current_app.config['db']
         # Validate content_id and season
         if not content_id or not isinstance(season, int):
             return {'status': 'failed', 'message': 'Invalid content_id or season'}, 400
@@ -373,6 +374,7 @@ def get_episode(content_id, season):
 @stream.route('/v1/api/videos/<string:content_id>/details', methods=['GET'])
 def get_content(content_id):
     try:
+        db = current_app.config['db']
         cursor = db.catalog.find_one({'uuid': content_id})
         if cursor is None:
             return {'status': 'failed', 'message': 'Content not found'}, 404
@@ -385,6 +387,7 @@ def get_content(content_id):
 def upload_video():
     """Handle video upload with improved error handling and async processing"""
     try:
+        db = current_app.config['db']
         # Validate request
         validation_error = _validate_upload_request(request)
         if validation_error:
@@ -447,6 +450,7 @@ def upload_video():
 @jwt_required()
 def create_content():
     try:
+        db = current_app.config['db']
         raw_data = request.get_json()
         content = StreamContent(**raw_data)
         insert_result = db.catalog.insert_one(content.to_bson())

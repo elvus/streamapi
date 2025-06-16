@@ -3,6 +3,7 @@ from flask import Flask
 from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
+from connection.connection import Connection
 from routes.stream import stream
 from routes.users import users
 from routes.authentication import authentication
@@ -28,6 +29,13 @@ app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  # Store JWT in cookies
 app.config["JWT_COOKIE_SECURE"] = True  # Set to True in production (HTTPS only)
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Set to True for CSRF protection
 app.config["JWT_COOKIE_SAMESITE"] = 'None'  # Allow cookies to be sent with cross-site requests
+# JWT Blacklist configuration
+app.config['JWT_BLOCKLIST_ENABLED'] = True
+app.config['JWT_BLOCKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+
+# Database configuration
+conn = Connection()
+app.config['db'] = conn.get_db()
 
 app.register_blueprint(stream)
 app.register_blueprint(users)
@@ -39,6 +47,12 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
+    jti = jwt_payload["jti"]
+    token = app.config['db'].token_blacklist.find_one({"jti": jti})
+    return token is not None
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port=os.getenv('PORT') or 5000)
