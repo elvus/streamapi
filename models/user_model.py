@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from models.objectid import PydanticObjectId
@@ -17,6 +18,7 @@ class Profile(BaseModel):
 
 class User(BaseModel):
     id: Optional[PydanticObjectId] = Field(None, alias='_id')
+    uuid: Optional[str] = Field(default_factory=lambda: str(uuid4()), alias='uuid')
     username: str
     password: str
     email: str

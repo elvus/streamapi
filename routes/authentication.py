@@ -7,6 +7,7 @@ from flask_jwt_extended.exceptions import JWTDecodeError
 
 from models.objectid import PydanticObjectId
 from models.user_model import User
+from models.viewers_model import Viewer
 from utils.hash import hash_password, verify_password
 
 authentication = Blueprint('authentication', __name__)
@@ -27,8 +28,8 @@ def login():
             return {'status': 'failed', 'msg': 'Username or password is incorrect'}, 401
         
         user = User(**cursor)
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        access_token = create_access_token(identity=user.id, additional_claims={'role': user.role, 'privileges': user.privileges, 'user_uuid': user.uuid})
+        refresh_token = create_refresh_token(identity=user.id, additional_claims={'role': user.role, 'privileges': user.privileges, 'user_uuid': user.uuid})
         response = jsonify({'status': 'success', 'user': user.to_json()})
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
@@ -53,18 +54,22 @@ def register():
         raw_data = request.get_json()
         username = raw_data.get('username')
         password = hash_password(raw_data.get('password'))
+        role = raw_data.get('role')
         email = raw_data.get('email')
-        privileges = ['read', 'write', 'update']
-        user = User(username=username, password=password, email=email, privileges=privileges)
+        privileges = ['manager','read', 'write', 'update', 'delete']
+        user = User(username=username, password=password, email=email, privileges=privileges, role=role)
         cursor = db.users.find_one({'username': username})
         
         if cursor is not None:
             return {'status': 'failed', 'msg': 'Username already exists'}, 400
         
         db.users.insert_one(user.to_bson())
+        viewer = Viewer(name=username, status='active', use_pin=False, user_uuid=user.uuid)
+        db.viewers.insert_one(viewer.to_bson())
         return {'status': 'success', 'msg': 'User created successfully'}, 200
     except Exception as e:
-        return {"status": "failed", "msg": "Internal server error"}, 500
+        print(e)
+        return {"status": "failed", "msg": "Internal server error", "error": str(e)}, 500
     
 @authentication.route('/v1/api/auth/logout', methods=['DELETE'])
 @jwt_required()

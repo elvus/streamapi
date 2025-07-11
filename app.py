@@ -4,6 +4,7 @@ from flask_cors import CORS, cross_origin
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from connection.connection import Connection
+from routes.viewers import viewers
 from routes.stream import stream
 from routes.users import users
 from routes.authentication import authentication
@@ -37,9 +38,11 @@ app.config['JWT_BLOCKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 conn = Connection()
 app.config['db'] = conn.get_db()
 
+# Register blueprints
 app.register_blueprint(stream)
 app.register_blueprint(users)
 app.register_blueprint(authentication)
+app.register_blueprint(viewers)
 app.register_blueprint(healthz)
 
 @app.after_request

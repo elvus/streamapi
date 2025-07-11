@@ -15,6 +15,7 @@ class Connection:
             self.db = self.client.get_database()
             self.db.command("ping")
             self.create_uuid_index('catalog')
+            self.create_uuid_index('viewers')
             self.create_expires_at_index('token_blacklist')
         except Exception as e:
             raise ConnectionError(f"Unable to connect to the database: {str(e)}")
