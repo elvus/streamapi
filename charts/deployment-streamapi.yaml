@@ -29,7 +29,7 @@ spec:
               port: 5000
           env:
             - name: UPLOAD_FOLDER
-              value: /app/videos
+              value: app/videos
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
