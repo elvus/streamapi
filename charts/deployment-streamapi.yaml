@@ -22,7 +22,7 @@ spec:
           image: elvus/streamapi:latest
           imagePullPolicy: Always
           ports:
-          - containerPort: 5000
+            - containerPort: 5000
           livenessProbe:
             httpGet:
               path: /healthz
@@ -40,6 +40,13 @@ spec:
                 secretKeyRef:
                   name: streamapi-secret
                   key: MONGO_CONNECTION_STRING
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 3500m
+              memory: 1500Mi
           volumeMounts:
             - name: videos
               mountPath: /app/videos
