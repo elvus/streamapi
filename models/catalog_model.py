@@ -12,7 +12,7 @@ class Episodes(BaseModel):
     next_episode_time: Optional[str] = None
     duration_seconds: Optional[float] = None
     file_path: Optional[str] = None
-    status: str
+    status: Optional[str] = None
 
 class Seasons(BaseModel):
     season_number: int

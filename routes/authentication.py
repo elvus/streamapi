@@ -30,7 +30,7 @@ def login():
         user = User(**cursor)
         access_token = create_access_token(identity=user.id, additional_claims={'role': user.role, 'privileges': user.privileges, 'user_uuid': user.uuid})
         refresh_token = create_refresh_token(identity=user.id, additional_claims={'role': user.role, 'privileges': user.privileges, 'user_uuid': user.uuid})
-        response = jsonify({'status': 'success', 'user': user.to_json()})
+        response = jsonify({'status': 'success', 'access_token': access_token, 'refresh_token': refresh_token, 'username': user.username, 'role': user.role})
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
         return response, 200

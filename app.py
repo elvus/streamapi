@@ -26,7 +26,7 @@ app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'flv', 'mkv', 'mov', 'wmv', 'w
 
 # JWT configuration
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key')
-app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  # Store JWT in cookies
+app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
 app.config["JWT_COOKIE_SECURE"] = True  # Set to True in production (HTTPS only)
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # Set to True for CSRF protection
 app.config["JWT_COOKIE_SAMESITE"] = 'None'  # Allow cookies to be sent with cross-site requests

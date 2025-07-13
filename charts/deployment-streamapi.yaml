@@ -30,7 +30,7 @@ spec:
               port: 5000
           env:
             - name: UPLOAD_FOLDER
-              value: app/videos
+              value: videos/
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -41,6 +41,8 @@ spec:
                 secretKeyRef:
                   name: streamapi-secret
                   key: MONGO_CONNECTION_STRING
+            - name: CORS_ORIGIN
+              value: "http://anoflix.home"
           resources:
             requests:
               cpu: 100m
