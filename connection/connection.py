@@ -34,3 +34,6 @@ class Connection:
         indexes = collection.index_information()
         if 'expires_at_1' not in indexes:
             collection.create_index([('expires_at', ASCENDING)], expireAfterSeconds=0, name='expires_at_1')
+    
+    def closeConnection(self):
+        self.client.close()

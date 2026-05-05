@@ -1,4 +1,7 @@
+import asyncio.tasks
 from collections import defaultdict
+import asyncio
+import threading
 from uuid import uuid4
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_jwt_extended import jwt_required
@@ -19,6 +22,10 @@ from connection.connection import Connection
 
 stream = Blueprint('stream', __name__)
 logger = logging.getLogger(__name__)
+
+ffmpeg_queue = []
+queue_processor_running = False
+queue_lock = threading.Lock()
 
 def _allowed_file(filename):
     return '.' in filename and \
@@ -95,21 +102,21 @@ def _get_video_duration(video_path: str) -> float:
 def _add_to_ffmpeg_queue(uuid, file, video_type, metadata=None):
     """
     Add a video file to the FFmpeg conversion queue
-    Returns: (video_path, video_output_path, process)
+    Returns: (video_path, video_output_path)
     """
     try:
         # Validate file
         if file.filename == '':
-            return None, None, {'status': 'failed', 'message': 'No selected file'}, 400
+            return None, {'status': 'failed', 'message': 'No selected file'}, 400
         if not _allowed_file(file.filename):
-            return None, None, {'status': 'failed', 'message': 'File type not allowed'}, 400
+            return None, {'status': 'failed', 'message': 'File type not allowed'}, 400
         if file.content_length > current_app.config.get('MAX_FILE_SIZE', 2 * 1024 * 1024 * 1024):
-            return None, None, {'status': 'failed', 'message': 'File size exceeds maximum allowed'}, 400
+            return None, {'status': 'failed', 'message': 'File size exceeds maximum allowed'}, 400
 
         # Get upload structure based on video type and metadata
         subdirs_or_error = _get_upload_structure(video_type, metadata) if metadata else []
         if isinstance(subdirs_or_error, tuple):
-            return None, None, subdirs_or_error
+            return None, subdirs_or_error
 
         # Create upload directory
         full_filename = secure_filename(file.filename)
@@ -126,7 +133,7 @@ def _add_to_ffmpeg_queue(uuid, file, video_type, metadata=None):
 
         # Skip if output already exists
         if os.path.exists(video_output_path):
-            return None, video_output_path, None
+            return None, video_output_path
 
         # Save original file
         file.save(video_path)
@@ -142,27 +149,29 @@ def _add_to_ffmpeg_queue(uuid, file, video_type, metadata=None):
             'hls_segment_type': current_app.config.get('HLS_SEGMENT_TYPE', 'fmp4')
         }
 
-        # Start conversion process
-        p = Process(target=_convert_video_to_hls, args=(
-            uuid,
-            video_path,
-            video_output_path,
-            hls_config['hls_segment_time'],
-            hls_config['hls_list_size'],
-            hls_config['hls_segment_type']
+        ffmpeg_queue.append(Process(target=_convert_video_to_hls, args=(
+            uuid, 
+            video_path, 
+            video_output_path, 
+            hls_config['hls_segment_time'], 
+            hls_config['hls_list_size'], 
+            hls_config['hls_segment_type'])
         ))
-        p.start()
-
-        return video_path, video_output_path, p
+        
+        # Start queue processor if not already running
+        _start_queue_processor()
+        
+        return video_path, video_output_path
 
     except Exception as e:
         current_app.logger.error(f'Queue error: {str(e)}')
         if 'video_path' in locals() and os.path.exists(video_path):
             os.remove(video_path)
-        return None, None, None
+        return None, None
 
 def _convert_video_to_hls(uuid, video_path, video_output_path, hls_segment_time=10, hls_list_size=0, hls_segment_type='fmp4'):
     """Convert video to HLS format with improved error handling and logging"""
+    print("starting conversion for ", uuid)
     try:
         # Create temporary directory for segments
         hls_params = {
@@ -193,6 +202,36 @@ def _convert_video_to_hls(uuid, video_path, video_output_path, hls_segment_time=
         if os.path.exists(video_path):
             os.remove(video_path)
             print(f"Deleted original video file: {video_path}")
+
+def _start_queue_processor():
+    """Start the queue processor if not already running"""
+    global queue_processor_running
+    with queue_lock:
+        if not queue_processor_running:
+            queue_processor_running = True
+            thread = threading.Thread(target=_process_queue_worker, daemon=True)
+            thread.start()
+
+def _process_queue_worker():
+    """Worker thread that processes one item at a time from the queue"""
+    global queue_processor_running
+    
+    while True:
+        process = None
+        
+        # Get next process from queue
+        with queue_lock:
+            if ffmpeg_queue:
+                process = ffmpeg_queue.pop(0)
+            else:
+                # No more items in queue, stop the worker
+                queue_processor_running = False
+                break
+        
+        if process:
+            # Process one item at a time
+            process.start()
+            process.join()  # Wait for this process to complete before starting the next one
 
 def _get_season_episodes(seasons: List[Dict[str, Any]]) -> Dict[int, List[Dict[str, Any]]]:
     """
@@ -238,8 +277,9 @@ def _update_status(content_id: str) -> bool:
     Returns:
         bool: True if update was successful, False otherwise
     """
+    from connection.connection import Connection
+    db = Connection().get_db()
     try:
-        db = current_app.config['db']
         result = db.catalog.update_one(
             {'uuid': content_id},
             {'$set': {'status': 'Ready'}}
@@ -251,10 +291,11 @@ def _update_status(content_id: str) -> bool:
         else:
             logger.warning(f'No content found with ID {content_id} to update status')
             return False
-            
     except Exception as e:
         logger.error(f'Error updating status for content {content_id}: {str(e)}')
         return False
+    finally:
+        Connection().closeConnection()
 
 @stream.route('/v1/api/videos/stream/<path:filename>', methods=['GET'])
 def stream_video(filename):
@@ -408,11 +449,11 @@ def upload_video():
             # Process each file with its metadata
             for file, metadata in zip(files, metadata_list):
                 metadata = json.loads(metadata)
-                video_path, video_output_path, process = _add_to_ffmpeg_queue(uuid, file, video_type, metadata)
-                if isinstance(process, tuple):  # Error case
-                    return process
-                                
-                if process or video_output_path:  # New conversion started or file already exists
+                video_path, video_output_path = _add_to_ffmpeg_queue(uuid, file, video_type, metadata)
+                if isinstance(video_output_path, tuple):  # Error case
+                    return video_output_path
+                
+                if video_output_path:  # New conversion started or file already exists
                     for episode in episodes[metadata['season']]:
                         if episode['episode_number'] == metadata['episode']:
                             episode['file_path'] = video_output_path
@@ -431,11 +472,11 @@ def upload_video():
         else:
             # Handle single file for movies
             file = request.files['file']
-            video_path, video_output_path, process = _add_to_ffmpeg_queue(uuid, file, video_type)
-            if isinstance(process, tuple):  # Error case
-                return process
-            
-            if process or video_output_path:  # New conversion started
+            video_path, video_output_path = _add_to_ffmpeg_queue(uuid, file, video_type)
+            if video_output_path:  # New conversion started or file already exists
+                if isinstance(video_output_path, tuple):  # Error case
+                    return video_output_path
+                
                 values['file_path'] = video_output_path
                 values['duration_seconds'] = _get_video_duration(video_path)
         content = StreamContent(**values)
@@ -444,6 +485,43 @@ def upload_video():
         
     except Exception as e:
         current_app.logger.error(f'Upload error: {str(e)}')
+        return {'status': 'failed', 'message': str(e)}, 500
+    
+@stream.route('/v1/api/videos/<string:uuid>/new-episode', methods=['PUT'])
+@jwt_required()
+def new_episode(uuid):
+    try:
+        values = json.loads(request.form['values'])
+        metadata_list = request.form.getlist('metadata')
+        files = request.files.getlist('file')
+        db = current_app.config['db']
+        cursor = db.catalog.find_one({'uuid': uuid})
+        if cursor is None:
+            return {'status': 'failed', 'message': 'Content not found'}, 404
+        episodes = _get_season_episodes(values['show_details'])
+        for file, metadata in zip(files, metadata_list):
+            metadata = json.loads(metadata)
+            video_path, video_output_path = _add_to_ffmpeg_queue(uuid, file, 'tvshow', metadata)
+            if isinstance(video_output_path, tuple):  # Error case
+                return video_output_path
+            
+            if video_output_path:
+                for season in cursor['seasons']:
+                    if season['season_number'] == metadata['season']:
+                        season['episodes'].append({
+                            'episode_number': metadata['episode'],
+                            'file_path': video_output_path,
+                            'duration_seconds': _get_video_duration(video_path)
+                        })
+                else:
+                    cursor['seasons'].append({
+                        'season_number': metadata['season'],
+                        'episodes': episodes[metadata['season']]
+                    })
+        db.catalog.update_one({'uuid': uuid}, {'$set': {'seasons': cursor['seasons']}})
+        return {'status': 'success', 'message': 'Episode added'}, 200
+                
+    except Exception as e:
         return {'status': 'failed', 'message': str(e)}, 500
     
 @stream.route('/v1/api/videos', methods=['POST'])

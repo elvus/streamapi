@@ -1,300 +1,201 @@
-# StreamAPI: FFMPEG API for Video Conversion
+# StreamAPI
 
-StreamAPI is a simple yet powerful FFMPEG-based API that allows you to effortlessly convert your videos into the widely used M3U8 format. With easy setup and execution, this tool streamlines the process of adapting your videos for various streaming applications.
-
-## Requirements
-
-To run StreamAPI, you need the following software installed on your system:
-
-- Docker
-- Python 3.6+
-- FFMPEG
-- MongoDB
-
-## Installation
-
-### Using Docker (Recommended)
-
-```sh
-# Clone the repository
-git clone https://github.com/elvus/streamapi.git
-cd streamapi
-
-# Start the services
-docker-compose up -d
-```
-### Manual Setup
-
-```sh
-# Clone the repository
-git clone https://github.com/elvus/streamapi.git
-cd streamapi
-```
-
-### 1. Create a Virtual Environment
-
-```bash
-python -m venv venv
-```
-
-### 2. Activate the Virtual Environment
-
-```bash
-source venv/bin/activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Rename `.env.example` to `.env`
-
-Rename the provided `.env.example` file to `.env`. This file contains configuration settings for your StreamAPI.
-
-### 5. Configure the `.env` File
-
-1. Set the `UPLOAD_FOLDER` variable to the path where you want to save your converted videos.
-2. Set your `JWT_SECRET_KEY` sentence
-3. Set your `MONGO_URI` connection variables
-4. Set the `CORS_ORIGIN` variable to the URL of your frontend application.
-
-```env
-UPLOAD_FOLDER=/path/to/your/upload/folder
-JWT_SECRET_KEY=my_secret_key
-MONGO_URI=mongodb://localhost:27017/streamapi
-CORS_ORIGIN=http://localhost:3000
-```
-
-Replace `/path/to/your/upload/folder` with the actual directory path where you want to store the converted videos.
-
-### 6. Run the Flask Application
-
-```bash
-export FLASK_APP=app.py
-flask run
-```
-
-That's it! Your StreamAPI server is now up and running. You can now utilize the API to convert your videos to the M3U8 format seamlessly.
-
-## Usage
-
-To convert a video, send a POST request to the appropriate endpoint with the video file. The API will handle the conversion process and provide you with the M3U8 file for streaming.
-
-```bash
-curl -X POST -F "file=@your_video.mp4" http://localhost:3001/v1/api/videos/upload
-```
-Make sure to replace `your_video.mp4` with the actual file path of the video you want to convert.
-
-## API Endpoints
-### Authentication Endpoints
-### 1. Register User
-***Endpoint:*** `POST /v1/api/stream/register`
-- **Description:** Registers a new user.
-- **Request:**
-  - Headers: `Content-Type: application/json`
-  - Body:
-    ```json
-    {
-      "username": "user",
-      "password": "password",
-      "email": "user@mail.com"
-    }
-    ```
-- **Response:**
-  ```json
-  {
-    "status": "success",
-    "msg": "User created successfully"
-  }
-  ```
-### 2. Login User 
-***Endpoint:*** `POST /v1/api/stream/login`
-- **Description:** Logs in a user.
-- **Request:**
-  - Headers: `Content-Type: application/json`
-  - Body:
-    ```json
-    {
-      "status": "success",
-      "user": {
-        "created_at": "Thu, 13 Feb 2025 00:10:01 GMT",
-        "email": "user@mail.com",
-        "id": "67ad38720cfcd6ffd43f131c",
-        "password": "*********",
-        "privileges": [
-          "read",
-          "write",
-          "update"
-        ],
-        "profile": null,
-        "role": null,
-        "updated_at": null,
-        "username": "user"
-      }
-    }
-
-    ```
-- **Response:**
-  ```json
-  {
-    "status": "success",
-    "msg": "Logged in successfully",
-  }
-  ```
-
-### Video Endpoints
-### 1. Upload Video
-
-**Endpoint:** `POST /v1/api/videos/upload`
-
-- **Description:** Uploads a video file.
-- **Request:**
-  - Headers: `Content-Type: multipart/form-data`
-  - Body:
-    - `file`: Video file
-- **Response:**
-  ```json
-  {
-    "status": "success",
-    "file_path": "/path/to/your/upload/folder/video.m3u8"
-  }
-  ```
-
-### 2. Stream Video
-
-**Endpoint:** `GET /v1/api/videos/stream/:id`
-
-- **Description:** Streams a video by ID.
-- **Request:**
-  - Params:
-    - `id`: Video ID
-- **Response:** Video stream
-
-### 3. Get Video Metadata
-
-**Endpoint:** `GET /v1/api/videos/:id/details`
-
-- **Description:** Retrieves metadata for a stored video.
-- **Request:**
-  - Params:
-    - `id`: Video ID
-- **Response:**
-  ```json
-  {
-    "cast": null,
-    "created_at": "Wed, 12 Feb 2025 00:39:42 GMT",
-    "description": null,
-    "duration_seconds": null,
-    "file_path": "/path/to/your/upload/folder/video.m3u8",
-    "genre": [
-      "Animation"
-    ],
-    "id": "67abedce3f77fbead839c165",
-    "rating": 0,
-    "release_year": 2025,
-    "seasons": null,
-    "title": "My Video",
-    "type": "movie",
-    "updated_at": "Wed, 12 Feb 2025 00:39:42 GMT",
-    "uuid": "c8528052-b99e-425b-ad8a-53e9221ddd5e"
-  }
-  ```
-### 4. Get All Videos
-- **Endpoint:** `GET /v1/api/videos`
-- **Description:** Retrieves all stored videos.
-- **Request:** None
-- **Response:**
-    ```json
-    [
-        {
-            "cast": null,
-            "created_at": "Wed, 12 Feb 2025 00:39:42 GMT",
-            "description": null,
-            "duration_seconds": null,
-            "file_path": "/path/to/your/upload/folder/video.m3u8",
-            "genre": [
-                "Animation"
-            ],
-            "id": "67abedce3f77fbead839c165",
-            "rating": 0,
-            "release_year": 2025,
-            "seasons": null,
-            "title": "My Video",
-            "type": "movie",
-            "updated_at": "Wed, 12 Feb 2025 00:39:42 GMT",
-            "uuid": "c8528052-b99e-425b-ad8a-53e9221ddd5e"
-        }
-    ]
-    ```
-## UI Setup
-
-StreamAPI comes with a user interface provided by the `streamui` repository. To set up the UI, follow these steps:
-
-### 1. Clone the `streamui` Repository
-
-```sh
-git clone https://github.com/elvus/streamui.git
-cd streamui
-```
-
-### 2. Install Dependencies
-
-```sh
-npm install
-```
-
-### 3. Configure the `.env.local` File
-
-Create a `.env.local` file in the `streamui` directory and add the following environment variables:
-
-```env
-VITE_API_BASE_URL=http://localhost:3001
-```
-
-Replace `http://localhost:3001` with the URL where your StreamAPI backend is running.
-
-### 4. Start the Development Server
-
-```sh
-npm run dev
-```
-
-The UI will be available at `http://localhost:5173`.
-
-### 5. Connect to the Backend
-
-Ensure that your StreamAPI backend is running and that the `CORS_ORIGIN` in your `.env` file is set to `http://localhost:5173` to allow the UI to communicate with the backend.
-
-```env
-CORS_ORIGIN=http://localhost:5173
-```
-
-### 6. Access the UI
-
-Open your browser and navigate to `http://localhost:5173` to access the StreamAPI user interface.
+A Flask-based video streaming API with FFmpeg processing capabilities.
 
 ## Features
 
-- Quick and easy video conversion to M3U8 format.
-- Flask-based API for seamless integration.
-- Customizable and extensible for your specific needs.
+- Video upload and conversion to HLS format
+- Background processing queue for FFmpeg conversions
+- Process status tracking and awaiting
+- Support for TV shows and movies
+- JWT authentication
 
-## Contributing
+## FFmpeg Queue System
 
-Feel free to open an issue or submit a pull request to improve StreamAPI!
+The API includes a robust queue system for handling FFmpeg video conversions:
 
-## Task List
+### Starting the Queue Processor
 
-- [x] **User Authentication**: Implement a login system and integrate JSON Web Tokens (JWT) for secure API access.
+Before uploading videos, start the background queue processor:
 
-- [ ] **Multiple Resolutions Support**: Enhance the API to handle multiple video resolutions, providing flexibility for different streaming scenarios.
+```bash
+curl -X POST http://localhost:5000/v1/api/videos/queue/start
+```
 
-- [ ] **Customize Output Format**: Allow users to specify custom output formats for converted videos.
+### Uploading Videos
 
-- [ ] **Optimize FFMPEG Parameters**: Fine-tune FFMPEG parameters for better performance and efficiency.
+Upload a video file:
 
-## License
+```bash
+curl -X POST http://localhost:5000/v1/api/videos/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@video.mp4" \
+  -F "type=movie" \
+  -F "values={\"title\":\"My Movie\",\"release_year\":2024}"
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The upload will return a UUID that you can use to track the conversion process.
+
+### Checking Process Status
+
+Check the status of a conversion process:
+
+```bash
+curl http://localhost:5000/v1/api/videos/process/UUID_HERE/status
+```
+
+Possible status values:
+- `queued`: Process is waiting in the queue
+- `running`: Process is currently converting
+- `completed`: Process finished successfully
+- `failed`: Process failed
+- `not_found`: UUID not found
+
+### Awaiting Process Completion
+
+Wait for a process to complete (with timeout):
+
+```bash
+curl -X POST http://localhost:5000/v1/api/videos/process/UUID_HERE/await \
+  -H "Content-Type: application/json" \
+  -d '{"timeout": 300}'
+```
+
+### Queue Information
+
+Get information about the current queue:
+
+```bash
+curl http://localhost:5000/v1/api/videos/queue/info
+```
+
+### Cleanup
+
+Clean up completed processes:
+
+```bash
+curl -X POST http://localhost:5000/v1/api/videos/queue/cleanup
+```
+
+## Usage Examples
+
+### Python Example
+
+```python
+import requests
+import time
+
+# Start the queue processor
+requests.post('http://localhost:5000/v1/api/videos/queue/start')
+
+# Upload a video
+with open('video.mp4', 'rb') as f:
+    response = requests.post(
+        'http://localhost:5000/v1/api/videos/upload',
+        headers={'Authorization': 'Bearer YOUR_TOKEN'},
+        files={'file': f},
+        data={
+            'type': 'movie',
+            'values': '{"title": "My Movie", "release_year": 2024}'
+        }
+    )
+
+# Get the UUID from the response
+uuid = response.json()['id']
+
+# Check status periodically
+while True:
+    status_response = requests.get(f'http://localhost:5000/v1/api/videos/process/{uuid}/status')
+    status = status_response.json()['process_status']
+    
+    if status == 'completed':
+        print("Video conversion completed!")
+        break
+    elif status == 'failed':
+        print("Video conversion failed!")
+        break
+    
+    time.sleep(5)  # Wait 5 seconds before checking again
+
+# Or await completion directly
+await_response = requests.post(
+    f'http://localhost:5000/v1/api/videos/process/{uuid}/await',
+    json={'timeout': 300}
+)
+```
+
+### JavaScript Example
+
+```javascript
+// Start the queue processor
+await fetch('http://localhost:5000/v1/api/videos/queue/start', {
+    method: 'POST'
+});
+
+// Upload a video
+const formData = new FormData();
+formData.append('file', videoFile);
+formData.append('type', 'movie');
+formData.append('values', JSON.stringify({
+    title: 'My Movie',
+    release_year: 2024
+}));
+
+const uploadResponse = await fetch('http://localhost:5000/v1/api/videos/upload', {
+    method: 'POST',
+    headers: {
+        'Authorization': 'Bearer YOUR_TOKEN'
+    },
+    body: formData
+});
+
+const { id: uuid } = await uploadResponse.json();
+
+// Check status
+const checkStatus = async () => {
+    const response = await fetch(`http://localhost:5000/v1/api/videos/process/${uuid}/status`);
+    const { process_status } = await response.json();
+    return process_status;
+};
+
+// Poll for completion
+while (true) {
+    const status = await checkStatus();
+    
+    if (status === 'completed') {
+        console.log('Video conversion completed!');
+        break;
+    } else if (status === 'failed') {
+        console.log('Video conversion failed!');
+        break;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+}
+```
+
+## Configuration
+
+The following configuration options are available for the FFmpeg queue:
+
+- `HLS_SEGMENT_TIME`: Duration of each HLS segment (default: 10 seconds)
+- `HLS_LIST_SIZE`: Number of segments to keep in playlist (default: 0 = all)
+- `HLS_SEGMENT_TYPE`: Type of segments (default: 'fmp4')
+- `MAX_FILE_SIZE`: Maximum file size in bytes (default: 2GB)
+
+## Error Handling
+
+The queue system includes comprehensive error handling:
+
+- Process timeouts (configurable)
+- Automatic cleanup of completed processes
+- Status tracking for all processes
+- Graceful handling of failed conversions
+
+## Notes
+
+- The queue processor runs as a background thread
+- Processes are tracked by UUID for easy identification
+- Failed processes are automatically marked as failed
+- Original video files are cleaned up after successful conversion
+- The system supports multiple concurrent conversions
